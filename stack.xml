@@ -1,0 +1,9 @@
+<stack>
+  <description brief="elektron_ballsucker">elektron_ballsucker</description>
+  <author>Maintained by Piotr Majcher</author>
+  <license></license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/elektron_ballsucker</url>
+  <depend stack="ros" />
+
+</stack>
