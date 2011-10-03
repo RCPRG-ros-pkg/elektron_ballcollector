@@ -1,17 +1,18 @@
 <package>
-  <description brief="simple_apps">
+  <description brief="elektron_teleop">
 
-     simple_apps
+     Teleoperation nodes for Elektron mobile robot.
 
   </description>
   <author>Piotr Majcher</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/simple_apps</url>
+  <url>http://ros.org/wiki/elektron_teleop</url>
   <depend package="roscpp"/>
+  <depend package="joy"/>
   <depend package="geometry_msgs"/>
   <depend package="nav_msgs"/>
-  <depend package="tf"/>
+  <depend package="elektron_base"/>
 
 </package>
 
