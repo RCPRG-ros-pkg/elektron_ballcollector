@@ -12,7 +12,7 @@
 	<param name="scale_angular" value="0.8" type="double"/>
 	
 	<!-- At last - teleoperation node -->
-	<node pkg="simple_apps" type="elektron_piotrek_joy" name="telepiotrek"/>
-	<node pkg="simple_apps" type="serialswitch_node_joy" name="serialsw" />
+	<node pkg="simple_apps" type="piotrek_teleop_node" name="telepiotrek"/>
+	<node pkg="simple_apps" type="serialswitch_node" name="serialsw" />
 
 </launch>

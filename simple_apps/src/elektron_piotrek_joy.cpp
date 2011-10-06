@@ -39,7 +39,7 @@ void ElektronTeleopJoy::joyCallback(const joy::Joy::ConstPtr& joy) {
 }
 
 int main(int argc, char** argv) {
-	ros::init(argc, argv, "teleop_turtle");
+	ros::init(argc, argv, "piotrek_teleop_node");
 	ElektronTeleopJoy elektron_teleop;
 
 	ros::spin();
