@@ -7,7 +7,6 @@
 
 SerialSwitch *sp;
 
-
 int main(int argc, char** argv){
     ros::init(argc, argv, "serialswitch_node");
     ros::NodeHandle n;
@@ -28,7 +27,7 @@ int main(int argc, char** argv){
     state.data = 12;
     
   //  p = new SerialSwitch(dev);
- 	p = new SerialSwitch(dev);
+ 	sp = new SerialSwitch(dev);
     
 	    
 	while(ros::ok()){
