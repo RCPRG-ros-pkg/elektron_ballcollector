@@ -31,11 +31,11 @@
 struct tgetstate{
      
      int16_t state;
-}
+};
 
 struct tsetstate{
     int16_t state;
-}
+};
 
 class SerialSwitch{
 
@@ -51,14 +51,14 @@ public:
     
 private:
     // serial port descriptior
-    int fd;
-    bool connected;
+ //   int fd;
+ //   bool connected;
     
-    tsetstate setstate;
-    tgetstate getstate;
+  //  tsetstate setstate;
+  //  tgetstate getstate;
     
     
-    bool _dump;
+  //  bool _dump;
 };
 
 #endif /*	ELEKTRON_HPP_	*/
