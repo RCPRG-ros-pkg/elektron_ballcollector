@@ -33,7 +33,7 @@ int main(int argc, char** argv){
 	    
 	while(ros::ok()){
 	  //  ros::Time current_time = ros::Time::now();
-	    serialswitch.publish(state);
+	    serialswitch_pub.publish(state);
 	    
 	    ros::spinOnce();
 	    loop_rate.sleep();
