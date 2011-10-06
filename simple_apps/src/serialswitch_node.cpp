@@ -3,7 +3,7 @@
 #include "serialswitch.hpp"
 
 
-ros::Time cmd_time;
+//ros::Time cmd_time;
 
 SerialSwitch *sp;
 
