@@ -59,7 +59,7 @@ private:
     
     
     bool _dump;
-}
+};
 
 #endif /*	ELEKTRON_HPP_	*/
 

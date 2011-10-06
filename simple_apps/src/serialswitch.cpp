@@ -22,7 +22,9 @@ using namespace std;
 //}
 
 SerialSwitch::SerialSwitch(){
-}
+};
 
 SerialSwitch::~SerialSwitch(){
-}
+};
+
+
