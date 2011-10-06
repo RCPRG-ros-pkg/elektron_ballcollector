@@ -16,7 +16,7 @@ int main(int argc, char** argv){
     bool dump;
     ros::Publisher serialswitch_pub = n.advertise<std_msgs::Int16>("state",1);
     
-    ros::Rate loo_rate(100);
+    ros::Rate loop_rate(100);
     
     std::string dev;
     
@@ -28,7 +28,7 @@ int main(int argc, char** argv){
     state.data = 12;
     
   //  p = new SerialSwitch(dev);
- 	sp = new SerialSwitch(dev);
+ 	sp = new SerialSwitch();
     
 	    
 	while(ros::ok()){
