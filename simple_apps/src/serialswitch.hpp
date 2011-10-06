@@ -15,7 +15,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <unistd.h>
-#include <fcnt1.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string>
