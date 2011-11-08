@@ -10,7 +10,7 @@
 SerialSwitch *sp;
 
 
-
+/*
 void joyCallback(const joy::Joy::ConstPtr& joy)
 {
       
@@ -18,6 +18,7 @@ void joyCallback(const joy::Joy::ConstPtr& joy)
       
       
 }
+*/
 
 
 int main(int argc, char** argv){
@@ -28,7 +29,7 @@ int main(int argc, char** argv){
   //  bool dump;
     ros::Publisher serialswitch_pub = n.advertise<std_msgs::Int16>("state",1);
     
-    ros::Subscriber joy_sub = n.subscribe("joy", 10, &joyCallback)
+ //   ros::Subscriber joy_sub = n.subscribe("joy", 10, &joyCallback)
     
     ros::Rate loop_rate(100);
     
