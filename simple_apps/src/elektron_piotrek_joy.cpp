@@ -51,7 +51,7 @@ void ElektronTeleopJoy::joyCallback(const joy::Joy::ConstPtr& joy) {
 	
 	std_msgs::Int16 state;
 
-	if(joy->button[4]==1){
+	if(joy->buttons[4]==1){
 		++stateCount;
 		state.data = stateCount;
 	}
