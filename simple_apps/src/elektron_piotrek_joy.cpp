@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <joy/Joy.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Int16.h>
 
 class ElektronTeleopJoy {
 public:
