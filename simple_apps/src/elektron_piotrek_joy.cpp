@@ -31,9 +31,9 @@ ElektronTeleopJoy::ElektronTeleopJoy() {
 	nh_.param("scale_angular", a_scale_, 1.0);
 	nh_.param("scale_linear", l_scale_, 0.23);
 
-//	vel_pub_ = nh_.advertise<geometry_msgs::Twist> ("cmd_vel", 1);
+	vel_pub_ = nh_.advertise<geometry_msgs::Twist> ("cmd_vel", 1);
 	
-	state_pub_ = nh.advertise<std_msgs::Int16> ("state1",1);
+	state_pub_ = nh_.advertise<std_msgs::Int16> ("state1",1);
 
 	joy_sub_ = nh_.subscribe<joy::Joy> ("joy", 10,
 			&ElektronTeleopJoy::joyCallback, this);
