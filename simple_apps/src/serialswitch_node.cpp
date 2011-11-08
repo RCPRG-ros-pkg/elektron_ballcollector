@@ -4,9 +4,21 @@
 #include "serialswitch.hpp"
 
 
+
 //ros::Time cmd_time;
 
 SerialSwitch *sp;
+
+
+
+void joyCallback(const joy::Joy::ConstPtr& joy)
+{
+      
+     sp->setState(13);
+      
+      
+}
+
 
 int main(int argc, char** argv){
     ros::init(argc, argv, "serialswitch_node");
@@ -15,6 +27,8 @@ int main(int argc, char** argv){
     
   //  bool dump;
     ros::Publisher serialswitch_pub = n.advertise<std_msgs::Int16>("state",1);
+    
+    ros::Subscriber joy_sub = n.subscribe("joy", 10, &joyCallback)
     
     ros::Rate loop_rate(100);
     

@@ -14,20 +14,31 @@ private:
 	int linear_, angular_;
 	double l_scale_, a_scale_;
 	ros::Publisher vel_pub_;
+	ros::Publisher state_pub_;	
 	ros::Subscriber joy_sub_;
+
+	int stateCount;
+	
 
 };
 
 ElektronTeleopJoy::ElektronTeleopJoy() {
+
+	stateCount = 0;
+
 	nh_.param("axis_linear", linear_, 1);
 	nh_.param("axis_angular", angular_, 0);
 	nh_.param("scale_angular", a_scale_, 1.0);
 	nh_.param("scale_linear", l_scale_, 0.23);
 
 	vel_pub_ = nh_.advertise<geometry_msgs::Twist> ("cmd_vel", 1);
+	
+	state_pub_ = nh.advertise<std_msgs::Int16>("state1",1);
 
 	joy_sub_ = nh_.subscribe<joy::Joy> ("joy", 10,
 			&ElektronTeleopJoy::joyCallback, this);
+
+	
 
 }
 
@@ -36,6 +47,15 @@ void ElektronTeleopJoy::joyCallback(const joy::Joy::ConstPtr& joy) {
 	vel.angular.z = a_scale_ * joy->axes[angular_];
 	vel.linear.x = l_scale_ * joy->axes[linear_];
 	vel_pub_.publish(vel);
+	
+	std_msgs::Int16 state;
+
+	if(joy->button[4]==1){
+		++stateCount;
+		state.data = stateCount;
+	}
+    	state_pub_.publish(state);
+	
 }
 
 int main(int argc, char** argv) {
