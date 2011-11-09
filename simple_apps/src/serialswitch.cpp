@@ -69,3 +69,14 @@ void SerialSwitch::update() {
 //	while (ret < sizeof(getdata))
 //		ret += read(fd, ((char*) &getdata) + ret, sizeof(getdata) - ret);
 }
+
+void SerialSwitch::dump() {
+	_dump = true;
+	of.open("/tmp/odom_dump.txt");
+	of << "aaaaaaa\n";
+}
+
+bool SerialSwitch::isConnected() {
+	return connected;
+}
+
