@@ -34,25 +34,40 @@ int main(int argc, char** argv){
     ros::Rate loop_rate(100);
     
     std::string dev;
-    
- //   if(!nh.getParam("device", dev)){
-//	dev = "dev/serialswitch";
- //   }
+      
 
-    std_msgs::Int16 state;
-    state.data = 12;
-    
-  //  p = new SerialSwitch(dev);
- 	sp = new SerialSwitch();
-    
-	    
-	while(ros::ok()){
-	  //  ros::Time current_time = ros::Time::now();
-	    serialswitch_pub.publish(state);
-	    
-	    ros::spinOnce();
-	    loop_rate.sleep();
+	if (!nh.getParam("device", dev)) {
+		 dev = "dev/ttyUSB1"; 
 	}
+
+	if (!nh.getParam("dump", dump)) {
+	dump = false;
+	}
+
+    	std_msgs::Int16 state;
+    	state.data = 12;
+    
+ 	sp = new SerialSwitch(dev);
+        
+        if (sp->isConnected()) {
+		if (dump)
+			sp->dump();
+
+	    
+		while(ros::ok()){
+		  //  ros::Time current_time = ros::Time::now();
+
+			sp->update();
+
+			serialswitch_pub.publish(state);
+
+			ros::spinOnce();
+			loop_rate.sleep();
+		}
+	} else {
+		ROS_ERROR("Connection to device %s failed", dev.c_str());
+	}
+
 
     
     return 0;

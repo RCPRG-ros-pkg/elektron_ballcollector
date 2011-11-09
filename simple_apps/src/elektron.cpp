@@ -30,54 +30,54 @@ double ang_nor_rad(double rad) {
 }
 
 Protonek::Protonek(const std::string& port, int baud) {
-connected = false;
+	connected = false;
 
-llpos = 0;
-lrpos = 0;
+	llpos = 0;
+	lrpos = 0;
 
-xpos = 0;
-ypos = 0;
-apos = 0;
+	xpos = 0;
+	ypos = 0;
+	apos = 0;
 
-setvel.start = 'x';
-setvel.cmd = 'a';
-setvel.lvel = 0;
-setvel.rvel = 0;
+	setvel.start = 'x';
+	setvel.cmd = 'a';
+	setvel.lvel = 0;
+	setvel.rvel = 0;
 
-odom_initialized = false;
+	odom_initialized = false;
 
-robot_axle_length = AXLE_LENGTH;
-m_per_tick = M_PI * WHEEL_DIAM / ENC_TICKS;
-enc_ticks = ENC_TICKS;
+	robot_axle_length = AXLE_LENGTH;
+	m_per_tick = M_PI * WHEEL_DIAM / ENC_TICKS;
+	enc_ticks = ENC_TICKS;
 
-lin_scale = 1.0;
-rot_scale = 1.0;
+	lin_scale = 1.0;
+	rot_scale = 1.0;
 
-fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
-if (fd >= 0) {
-tcgetattr(fd, &oldtio);
+	fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+	if (fd >= 0) {
+		tcgetattr(fd, &oldtio);
 
-// set up new settings
-struct termios newtio;
-memset(&newtio, 0, sizeof(newtio));
-newtio.c_cflag = CBAUD | CS8 | CLOCAL | CREAD | CSTOPB;
-newtio.c_iflag = INPCK; //IGNPAR;
-newtio.c_oflag = 0;
-newtio.c_lflag = 0;
-if (cfsetispeed(&newtio, baud) < 0 || cfsetospeed(&newtio, baud) < 0) {
-fprintf(stderr, "Failed to set serial baud rate: %d\n", baud);
-tcsetattr(fd, TCSANOW, &oldtio);
-close(fd);
-fd = -1;
-return;
-}
-// activate new settings
-tcflush(fd, TCIFLUSH);
-tcsetattr(fd, TCSANOW, &newtio);
-connected = true;
-}
+		// set up new settings
+		struct termios newtio;
+		memset(&newtio, 0, sizeof(newtio));
+		newtio.c_cflag = CBAUD | CS8 | CLOCAL | CREAD | CSTOPB;
+		newtio.c_iflag = INPCK; //IGNPAR;
+		newtio.c_oflag = 0;
+		newtio.c_lflag = 0;
+		if (cfsetispeed(&newtio, baud) < 0 || cfsetospeed(&newtio, baud) < 0) {
+			fprintf(stderr, "Failed to set serial baud rate: %d\n", baud);
+			tcsetattr(fd, TCSANOW, &oldtio);
+			close(fd);
+			fd = -1;
+			return;
+		}
+		// activate new settings
+		tcflush(fd, TCIFLUSH);
+		tcsetattr(fd, TCSANOW, &newtio);
+		connected = true;
+	}
 
-_dump = false;
+	_dump = false;
 }
 
 Protonek::~Protonek() {
@@ -99,13 +99,12 @@ of << "lpos;lindex;rpos;rindex;lvel;rvel;apos;xpos;ypos\n";
 }
 
 void Protonek::update() {
-unsigned int ret = 0;
-tcflush(fd, TCIFLUSH);
-write(fd, &setvel, sizeof(setvel));
+	unsigned int ret = 0;
+	tcflush(fd, TCIFLUSH);
+	write(fd, 1, sizeof(setvel));
 
-while (ret < sizeof(getdata))
-ret += read(fd, ((char*) &getdata) + ret, sizeof(getdata) - ret);
-
+//	while (ret < sizeof(getdata))
+//		ret += read(fd, ((char*) &getdata) + ret, sizeof(getdata) - ret);
 }
 
 void Protonek::setVelocity(double lvel, double rvel) {

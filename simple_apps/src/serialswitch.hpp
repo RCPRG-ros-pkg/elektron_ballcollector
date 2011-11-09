@@ -40,25 +40,21 @@ struct tsetstate{
 class SerialSwitch{
 
 public:
- //   SerialSwitch(const std::string& port, int baud = BAUD);
-    SerialSwitch();
-    ~SerialSwitch();
+    	SerialSwitch(const std::string& port, int baud = BAUD);
+
+	~SerialSwitch();
+	void update();
+   
     
- //  void setState(int state);
- //   void getState(int &state);
-    
- //   bool isConnected();
-    
+   	bool isConnected();
+    	void dump();
 private:
-    // serial port descriptior
- //   int fd;
- //   bool connected;
-    
-  //  tsetstate setstate;
-  //  tgetstate getstate;
-    
-    
-  //  bool _dump;
+
+// serial port descriptior
+	int fd;
+	struct termios oldtio;
+	bool connected;
+   	bool _dump;
 };
 
 #endif /*	ELEKTRON_HPP_	*/
