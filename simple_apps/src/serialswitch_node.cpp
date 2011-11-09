@@ -26,15 +26,14 @@ int main(int argc, char** argv){
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
     
-  //  bool dump;
     ros::Publisher serialswitch_pub = n.advertise<std_msgs::Int16>("state",1);
     
  //   ros::Subscriber joy_sub = n.subscribe("joy", 10, &joyCallback)
     
-    ros::Rate loop_rate(100);
+   	ros::Rate loop_rate(100);
     
-    std::string dev;
-      
+    	std::string dev;
+      	bool dump;
 
 	if (!nh.getParam("device", dev)) {
 		 dev = "dev/ttyUSB1"; 
