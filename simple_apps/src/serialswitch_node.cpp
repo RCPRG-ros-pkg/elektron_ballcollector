@@ -36,7 +36,7 @@ int main(int argc, char** argv){
       	bool dump;
 
 	if (!nh.getParam("device", dev)) {
-		 dev = "dev/ttyUSB1"; 
+		 dev = "/dev/ttyUSB1"; 
 	}
 
 	if (!nh.getParam("dump", dump)) {
