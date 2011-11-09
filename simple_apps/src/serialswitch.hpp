@@ -26,7 +26,7 @@
 #define BAUD B19200
  
 // port
-#define PORT ="/dev/ttyUSB0"
+#define PORT ="/dev/ttyUSB1"
  
 struct tgetstate{
      

@@ -30,7 +30,7 @@ int main(int argc, char** argv){
     
  //   ros::Subscriber joy_sub = n.subscribe("joy", 10, &joyCallback)
     
-   	ros::Rate loop_rate(100);
+   	ros::Rate loop_rate(3000);
     
     	std::string dev;
       	bool dump;
