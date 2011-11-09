@@ -72,8 +72,6 @@ void SerialSwitch::update() {
 
 void SerialSwitch::dump() {
 	_dump = true;
-	of.open("/tmp/odom_dump.txt");
-	of << "aaaaaaa\n";
 }
 
 bool SerialSwitch::isConnected() {
