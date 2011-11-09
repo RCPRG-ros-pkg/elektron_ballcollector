@@ -23,7 +23,7 @@
 
  
 // baudrate
-#define BAUD B115200
+#define BAUD B19200
  
 // port
 #define PORT ="/dev/ttyUSB0"
