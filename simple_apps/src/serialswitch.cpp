@@ -59,7 +59,7 @@ SerialSwitch::~SerialSwitch(){
 	close(fd);
 };
 
-void Protonek::update() {
+void SerialSwitch::update() {
 	unsigned char data[1] = {0x40} ;
 
 	unsigned int ret = 0;
