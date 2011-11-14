@@ -2,6 +2,7 @@
 #include <joy/Joy.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int16.h>
+#include "serialswitch.hpp"
 
 
 SerialSwitch *sp;
