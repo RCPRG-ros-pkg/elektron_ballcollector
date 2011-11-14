@@ -78,6 +78,7 @@ void getRawOdometry(double &linc, double &rinc);
 void getOdometry(double &x, double &y, double &a);
 void setOdometry(double x, double y, double a);
 
+
 bool isConnected();
 
 double m_per_tick;

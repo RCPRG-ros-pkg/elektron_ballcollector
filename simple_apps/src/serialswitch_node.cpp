@@ -56,7 +56,7 @@ int main(int argc, char** argv){
 		while(ros::ok()){
 		  //  ros::Time current_time = ros::Time::now();
 
-			sp->update();
+		//	sp->update();
 
 			serialswitch_pub.publish(state);
 

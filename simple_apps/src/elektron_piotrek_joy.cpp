@@ -3,6 +3,9 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int16.h>
 
+
+SerialSwitch *sp;
+
 class ElektronTeleopJoy {
 public:
 	ElektronTeleopJoy();
@@ -54,6 +57,20 @@ void ElektronTeleopJoy::joyCallback(const joy::Joy::ConstPtr& joy) {
 	if(joy->buttons[4]==1){
 		++stateCount;
 		state.data = stateCount;
+
+
+	sp = new SerialSwitch(dev);
+        
+        if (sp->isConnected()) {
+		if(ros::ok()){
+			sp->update();
+		}
+	} else {
+		ROS_ERROR("Connection to device %s failed", dev.c_str());
+	}
+
+
+
 	}
     	state_pub_.publish(state);
 	
