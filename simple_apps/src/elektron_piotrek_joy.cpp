@@ -68,7 +68,7 @@ void ElektronTeleopJoy::joyCallback(const joy::Joy::ConstPtr& joy) {
 				sp->update();
 			}
 		} else {
-			ROS_ERROR("Connection to device %s failed", dev.c_str());
+			ROS_ERROR("Connection to device  failed");
 		}
 	}
     	state_pub_.publish(state);
