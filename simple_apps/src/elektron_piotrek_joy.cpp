@@ -43,6 +43,10 @@ ElektronTeleopJoy::ElektronTeleopJoy() {
 	joy_sub_ = nh_.subscribe<joy::Joy> ("joy", 10,
 			&ElektronTeleopJoy::joyCallback, this);
 
+
+    	std::string dev = "/dev/ttyUSB1"; 
+ 	sp = new SerialSwitch(dev);
+
 	
 
 }
@@ -59,19 +63,13 @@ void ElektronTeleopJoy::joyCallback(const joy::Joy::ConstPtr& joy) {
 		++stateCount;
 		state.data = stateCount;
 
-
-	sp = new SerialSwitch(dev);
-        
-        if (sp->isConnected()) {
-		if(ros::ok()){
-			sp->update();
+		if (sp->isConnected()) {
+			if(ros::ok()){
+				sp->update();
+			}
+		} else {
+			ROS_ERROR("Connection to device %s failed", dev.c_str());
 		}
-	} else {
-		ROS_ERROR("Connection to device %s failed", dev.c_str());
-	}
-
-
-
 	}
     	state_pub_.publish(state);
 	

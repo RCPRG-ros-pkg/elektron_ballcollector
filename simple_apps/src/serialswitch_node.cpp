@@ -7,7 +7,7 @@
 
 //ros::Time cmd_time;
 
-SerialSwitch *sp;
+//SerialSwitch *sp;
 
 
 /*
@@ -32,7 +32,8 @@ int main(int argc, char** argv){
     
    	ros::Rate loop_rate(1);
     
-    	std::string dev;
+    	/*
+	std::string dev;
       	bool dump;
 
 	if (!nh.getParam("device", dev)) {
@@ -67,7 +68,7 @@ int main(int argc, char** argv){
 		ROS_ERROR("Connection to device %s failed", dev.c_str());
 	}
 
-
+*/
     
     return 0;
 }       
