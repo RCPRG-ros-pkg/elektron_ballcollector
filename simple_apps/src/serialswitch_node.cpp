@@ -5,22 +5,6 @@
 
 
 
-//ros::Time cmd_time;
-
-//SerialSwitch *sp;
-
-
-/*
-void joyCallback(const joy::Joy::ConstPtr& joy)
-{
-      
-     sp->setState(13);
-      
-      
-}
-*/
-
-
 int main(int argc, char** argv){
     ros::init(argc, argv, "serialswitch_node");
     ros::NodeHandle n;
