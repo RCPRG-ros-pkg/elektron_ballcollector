@@ -1,0 +1,10 @@
+<launch>
+	
+	<include file="$(find elektron_bringup)/launch/elektron_base.launch" />
+	<include file="$(find elektron_bringup)/launch/elektron_sensors.launch" />
+
+	<node pkg="simple_apps" type="hoover_node" name="hoover" output="screen" />
+	
+	<include file="$(find simple_apps)/launch/piotrek_joy.launch" />
+	<include file="$(find openni_launch)/launch/openni.launch" />
+</launch>

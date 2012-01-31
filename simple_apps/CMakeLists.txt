@@ -30,6 +30,6 @@ rosbuild_add_executable(elektron_piotrek_joy src/elektron_piotrek_joy.cpp src/se
 rosbuild_add_executable(serialswitch_node src/serialswitch_node.cpp src/serialswitch.cpp)
 #rosbuild_add_executable(first_image_rec_node src/first_image_rec_node.cpp)
 rosbuild_add_executable(convert_node src/convert_node.cpp)
-rosbuild_add_executable(color_image_node src/color_image_node.cpp src/serialswitch.cpp)
-#rosbuild_add_executable(simple_navigation_goals src/simple_navigation_goals.cpp)
+rosbuild_add_executable(hoover_node src/hoover_node.cpp src/serialswitch.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+
