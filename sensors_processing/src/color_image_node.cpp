@@ -10,7 +10,7 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int16.h>
 #include <sensor_msgs/Joy.h>
-#include "serialswitch.hpp"
+#include "../../simple_apps/src/serialswitch.hpp"
 #include <list>
 
 

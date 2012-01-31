@@ -15,9 +15,6 @@
   <depend package="std_msgs"/>
   <depend package="elektron_base"/>
   <depend package="sensor_msgs"/> 
-  <depend package="opencv2" />
-  <depend package="cv_bridge" />
-  <depend package="image_transport" />
   <depend package="elektron_base" /> 
   <depend package="elektron_sensors" />
 
