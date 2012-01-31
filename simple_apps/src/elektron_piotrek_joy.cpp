@@ -19,6 +19,7 @@ public:
 private:
 	void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
 
+
 	ros::NodeHandle nh_;
 
 	int linear_, angular_;
@@ -43,12 +44,12 @@ ElektronTeleopJoy::ElektronTeleopJoy() {
 
 	vel_pub_ = nh_.advertise<geometry_msgs::Twist> ("cmd_vel", 1);
 	
-	state_pub_ = nh_.advertise<std_msgs::Int16> ("state1",1);
+	state_pub_ = nh_.advertise<std_msgs::Int16> ("state",1);
 
 	joy_sub_ = nh_.subscribe<sensor_msgs::Joy> ("joy", 10, &ElektronTeleopJoy::joyCallback, this);
 
 
-    	std::string dev = "/dev/ttyUSB1"; 
+    std::string dev = "/dev/ttyUSB1";
  	sp = new SerialSwitch(dev);
 
 }
@@ -76,9 +77,11 @@ void ElektronTeleopJoy::joyCallback(const sensor_msgs::Joy::ConstPtr& joy) {
 			ROS_ERROR("Connection to device  failed");
 		}
 	}
-    	state_pub_.publish(state);
-	
+    state_pub_.publish(state);
+
 }
+
+
 
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "piotrek_teleop_node");
