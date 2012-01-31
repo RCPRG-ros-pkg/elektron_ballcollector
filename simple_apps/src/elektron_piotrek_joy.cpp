@@ -10,7 +10,7 @@
 
 using namespace std;
 
-SerialSwitch *sp;
+//SerialSwitch *sp;
 
 class ElektronTeleopJoy {
 public:
@@ -24,7 +24,7 @@ private:
 	int linear_, angular_;
 	double l_scale_, a_scale_;
 	ros::Publisher vel_pub_;
-	ros::Publisher state_pub_;	
+//	ros::Publisher state_pub_;
 	ros::Subscriber joy_sub_;
 
 	int stateCount;
@@ -43,13 +43,13 @@ ElektronTeleopJoy::ElektronTeleopJoy() {
 
 	vel_pub_ = nh_.advertise<geometry_msgs::Twist> ("cmd_vel", 1);
 	
-	state_pub_ = nh_.advertise<std_msgs::Int16> ("state1",1);
+//	state_pub_ = nh_.advertise<std_msgs::Int16> ("state1",1);
 
 	joy_sub_ = nh_.subscribe<sensor_msgs::Joy> ("joy", 10, &ElektronTeleopJoy::joyCallback, this);
 
 
-    	std::string dev = "/dev/ttyUSB1"; 
- 	sp = new SerialSwitch(dev);
+  //  std::string dev = "/dev/ttyUSB1";
+  //  sp = new SerialSwitch(dev);
 
 }
 
@@ -62,6 +62,7 @@ void ElektronTeleopJoy::joyCallback(const sensor_msgs::Joy::ConstPtr& joy) {
 	vel.linear.x = l_scale_ * joy->axes[linear_];
 	vel_pub_.publish(vel);
 	
+	/*
 	std_msgs::Int16 state;
 
 	if(joy->buttons[4]==1){
@@ -77,6 +78,7 @@ void ElektronTeleopJoy::joyCallback(const sensor_msgs::Joy::ConstPtr& joy) {
 		}
 	}
     	state_pub_.publish(state);
+    	*/
 	
 }
 
