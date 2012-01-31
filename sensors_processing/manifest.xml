@@ -1,0 +1,14 @@
+<package>
+  <description brief="sensors_processing">
+
+     sensors_processing
+
+  </description>
+  <author>Piotr Majcher</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/sensors_processing</url>
+
+</package>
+
+
