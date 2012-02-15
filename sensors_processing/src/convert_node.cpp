@@ -27,6 +27,15 @@ double val2 = 0.0;
 int morphIterations = 1;
 
 
+/*void printGaussianPoiont(Mat &image, int x, int y, int r ){
+	for(int i=x-r; i<x+r; ++i){
+		for(int j=y-r; j<y+r; ++j){
+			image.at<uint16_t>(y, x) = 127;
+		}
+	}
+}*/
+
+
 void callback(sensors_processing::TutorialsConfig &config, uint32_t level) {
   ROS_INFO("Reconfigure Request: %f %f",
             config.double_param1, config.double_param2);
@@ -36,10 +45,6 @@ void callback(sensors_processing::TutorialsConfig &config, uint32_t level) {
   morphIterations = config.morphIterations;
 }
 
-
-
-
-
 using namespace cv;
 
 namespace enc = sensor_msgs::image_encodings;
@@ -47,12 +52,15 @@ namespace enc = sensor_msgs::image_encodings;
 
 bool fristLoop = true;
 Mat firstImage;
+Mat out_image;
 
 static const char WINDOW_GREY[] = "Gray";
 
 static const char WINDOW_ORG[] = "Orginal";
 
 static const char WINDOW_COUNT[] = "Cpunture";
+
+static const char WINDOW_OUT[]	="Out";
 
 class ImageConverter {
 	ros::NodeHandle nh_;
@@ -76,12 +84,14 @@ public:
 		namedWindow(WINDOW_GREY);
 		namedWindow(WINDOW_ORG);
 		namedWindow(WINDOW_COUNT);
+		namedWindow(WINDOW_OUT);
 	}
 
 	~ImageConverter() {
 		destroyWindow(WINDOW_GREY);
 		destroyWindow(WINDOW_ORG);
 		destroyWindow(WINDOW_COUNT);
+		destroyWindow(WINDOW_OUT);
 	}
 
 	void imageCb(const sensor_msgs::ImageConstPtr& msg) {
@@ -103,11 +113,26 @@ public:
 		cv_ptr->image.convertTo(gray, 	 CV_8UC1, 1./16);
 		cv_ptr->image.convertTo(orginal, CV_16UC1, 1);
 
+		cv_ptr->image.convertTo(gray, 	 CV_8UC1, 1./16);
+
 
 		if(fristLoop){
+			out_image = gray.clone();
+
+			for (int x = 0; x < 640; ++x) {
+				for (int y = 0; y < 480; ++y) {
+					out_image.at < uint8_t > (y, x) = 0;
+				}
+			}
 
 			firstImage = orginal.clone();
 			fristLoop = false;
+		}
+
+		for (int x = 0; x < 640; ++x) {
+			for (int y = 0; y < 480; ++y) {
+				out_image.at < uint8_t > (y, x) *= 0.5;
+			}
 		}
 
 
@@ -127,8 +152,8 @@ public:
 
 	//	orginal.at<uint16_t>(400, 320) = 60000;
 
-
-		Mat countMap = gray.clone();
+/*
+		Mat countMap = gray.clone();*/
 
 /*
 		for(int x =0; x < 640; ++x){
@@ -167,18 +192,91 @@ public:
 //		dilate(gray, gray, elem, anchor, 1);
 //		dilate(gray, gray, elem, anchor, 1);
 //		dilate(gray, gray, elem, anchor, 1);
-//		dilate(gray, gray, elem, anchor, 1);
+		dilate(gray, gray, elem, anchor, 1);
 
 //		cv.MorphologyEx(image, image5, temp, element, cv.CV_MOP_CLOSE, 2);
 
-		morphologyEx(gray, gray, MORPH_CLOSE, elem, anchor, morphIterations );
+		Mat countMap = gray.clone();
+
+
+
+		morphologyEx(countMap, countMap, MORPH_CLOSE, elem, anchor, morphIterations );
+
 	//	InputArray src, OutputArray dst, int op, InputArray element, Point anchor=Point(-1,-1), int iterations=1,
 	//	int borderType=BORDER_CONSTANT, const Scalar& borderValue=morphologyDefaultBorderValue()
 
 	//	ROS_INFO("There are %d contours", contours.size());
 
+		Mat empty = gray.clone();
+		threshold(gray, empty, 255, 255, THRESH_BINARY);
 
-	//	findContours(gray, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+/*
+		for(int x =0; x < 640; ++x){
+			for(int y = 0; y < 480; ++y){
+				cont.at<uint16_t>(y, x)  = 0;
+
+			}
+		}*/
+
+
+
+
+		findContours(countMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+		ROS_INFO("There are %d contours\n", contours.size());
+
+		 for (int i=0; i<contours.size(); i++) {
+		//	 drawContours( gray, contours[i], color, color, -1, CV_FILLED, 8 );
+			 int area = contourArea(contours[i]);
+
+
+
+			 Point pt1 = Point(639, 479);
+			 Point pt2 = Point(0, 0);
+
+			 for(int j=0; j<contours[i].size(); ++j){
+				 pt1.x = min(pt1.x, contours[i][j].x );
+				 pt1.y = min(pt1.y, contours[i][j].y );
+
+				 pt2.x = max(pt2.x, contours[i][j].x );
+				 pt2.y = max(pt2.y, contours[i][j].y );
+			 }
+
+			 int a = (pt2.x - pt1.x);
+
+			 if(a < 10 || a > 40){
+				 continue;
+			 }
+			 int center_y = (pt1.y + pt2.y)/2;
+			 if(center_y < 150){
+				 continue;
+			 }
+			 ROS_INFO("area %d = %d", i, area);
+			 pt2.y = pt1.y + a;
+			 rectangle(empty, pt1, pt2, 255);
+			 drawContours(empty, contours, i, 255);
+			// rectangle(gray, pt1, pt2, 255, CV_FILLED);
+			// rectangle(out_image, pt1, pt2, 255, CV_FILLED);
+
+
+	//		 Point center((pt1.x + pt2.x)/2, (pt1.y + pt2.y)/2);
+	//		 circle(out_image,  center, a/2, 255, CV_FILLED);
+
+			 for(int x=pt1.x; x<pt2.x; ++x){
+			 		for(int y=pt1.y; y<pt2.y; ++y){
+
+			 			out_image.at<uint8_t>(y, x) =
+			 					out_image.at<uint8_t>(y, x) < 200 ?
+			 							out_image.at<uint8_t>(y, x)+50
+			 						    :out_image.at<uint8_t>(y, x) ;
+			 		}
+			 	}
+
+
+		 }
+
+			threshold(out_image, trash, 75, 255, THRESH_BINARY);
+
 
 
 		imshow(WINDOW_COUNT, trash);
@@ -186,7 +284,10 @@ public:
 		imshow(WINDOW_GREY, gray);
 		//  waitKey(3);
 
-		imshow(WINDOW_ORG, orginal);
+		imshow(WINDOW_ORG, countMap);
+
+		imshow(WINDOW_OUT, out_image);
+
 		waitKey(3);
 
 		image_pub_.publish(cv_ptr->toImageMsg());
@@ -207,6 +308,8 @@ int main(int argc, char** argv) {
 
 	ros::spin();
 	return 0;
+
+
 }
 
 
