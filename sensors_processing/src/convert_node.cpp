@@ -1,3 +1,5 @@
+#define _ON_PC_ 1
+
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -7,11 +9,19 @@
 #include <inttypes.h>
 #include <cv.h>
 #include <math.h>
+#include <list>
+#include <ecl/ipc.hpp>
+
+
+
 
 #include <dynamic_reconfigure/server.h>
 #include <sensors_processing/TutorialsConfig.h>
 
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Int16MultiArray.h>
+
+
 
 // 	maksymalny rozmiar piłeczki - mieści się w kwadracie o boku 37px, czyli jej promień to ok 14px, czyli rozmiar 14^2*pi = ok. 615px
 //	maksymalny obwód to 2*pi*r =
@@ -20,6 +30,16 @@
 //	z odległości 100cm piłeczka ma rozmiar ok 360px
 //	z odległości 70cm piłeczka ma rozmiar ok 655px
 
+
+using ecl::Semaphore;
+
+typedef struct myCircle{
+	uint16_t x;
+	uint16_t y;
+	uint16_t r;
+}CIRCLE;
+
+std::vector<CIRCLE> circleList;
 
 
 double val1 = 0.0;
@@ -54,13 +74,16 @@ bool fristLoop = true;
 Mat firstImage;
 Mat out_image;
 
+#ifdef _ON_PC_
+
 static const char WINDOW_GREY[] = "Gray";
-
 static const char WINDOW_ORG[] = "Orginal";
-
 static const char WINDOW_COUNT[] = "Cpunture";
-
 static const char WINDOW_OUT[]	="Out";
+
+static const char WINDOW_COLOR_1[]	="Image";
+
+#endif
 
 class ImageConverter {
 	ros::NodeHandle nh_;
@@ -75,27 +98,82 @@ public:
 	ImageConverter() :
 			it_(nh_) {
 		image_pub_ = it_.advertise("out", 1);
-		image_sub_ = it_.subscribe("/camera/depth/image_raw", 1,
-				&ImageConverter::imageCb, this);
+		image_depth_sub_ = it_.subscribe("/camera/depth/image_raw", 1, &ImageConverter::depthImageCb, this);
+
+		image_sub_ = it_.subscribe("/camera/rgb/image_color", 1, &ImageConverter::imageCb, this);
 
 		vel_pub_ = nh_.advertise<geometry_msgs::Twist> ("cmd_vel", 1);
 
 		counter = 0;
+
+#ifdef _ON_PC_
+
 		namedWindow(WINDOW_GREY);
 		namedWindow(WINDOW_ORG);
 		namedWindow(WINDOW_COUNT);
 		namedWindow(WINDOW_OUT);
+		namedWindow(WINDOW_COLOR_1);
+#endif
+
 	}
 
 	~ImageConverter() {
+#ifdef _ON_PC_
+
 		destroyWindow(WINDOW_GREY);
 		destroyWindow(WINDOW_ORG);
 		destroyWindow(WINDOW_COUNT);
 		destroyWindow(WINDOW_OUT);
+		destroyWindow(WINDOW_COLOR_1);
+
+#endif
 	}
 
+
 	void imageCb(const sensor_msgs::ImageConstPtr& msg) {
-//	  ROS_INFO("I heard Image");
+		  ROS_INFO("I heard color image");
+
+		cv_bridge::CvImagePtr cv_ptr;
+		try {
+			cv_ptr = cv_bridge::toCvCopy(msg, enc::BGR8);
+		} catch (cv_bridge::Exception& e) {
+			ROS_ERROR("cv_bridge exception: %s", e.what());
+			return;
+
+		}
+
+		Mat gray;
+
+		cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
+
+		Semaphore semaphore("test_sem");
+		semaphore.lock();
+		ROS_INFO("imageCb semaphore in");
+
+		for(int i=0; i< circleList.size(); ++i ){
+
+			ROS_INFO("draw circle %d",i);
+			 Point pt1 = Point(circleList[0].x -circleList[0].r, circleList[0].y - circleList[0].r);
+			 Point pt2 = Point(circleList[0].x +circleList[0].r, circleList[0].y + circleList[0].r);
+			 rectangle(gray, pt1, pt2, 255);
+		}
+
+
+
+		semaphore.unlock();
+
+#ifdef _ON_PC_
+		imshow(WINDOW_COLOR_1, gray);
+
+		waitKey(3);
+#endif
+		ROS_INFO("imageCb semaphore out");
+
+
+	}
+
+	void depthImageCb(const sensor_msgs::ImageConstPtr& msg) {
+	  ROS_INFO("I heard depth image");
 
 		cv_bridge::CvImagePtr cv_ptr;
 		try {
@@ -223,7 +301,9 @@ public:
 
 		findContours(countMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 
-		ROS_INFO("There are %d contours\n", contours.size());
+	//	ROS_INFO("There are %d contours\n", contours.size());
+
+
 
 		 for (int i=0; i<contours.size(); i++) {
 		//	 drawContours( gray, contours[i], color, color, -1, CV_FILLED, 8 );
@@ -251,7 +331,7 @@ public:
 			 if(center_y < 150){
 				 continue;
 			 }
-			 ROS_INFO("area %d = %d", i, area);
+	//		 ROS_INFO("area %d = %d", i, area);
 			 pt2.y = pt1.y + a;
 			 rectangle(empty, pt1, pt2, 255);
 			 drawContours(empty, contours, i, 255);
@@ -275,20 +355,65 @@ public:
 
 		 }
 
-			threshold(out_image, trash, 75, 255, THRESH_BINARY);
+		threshold(out_image, trash, 75, 255, THRESH_BINARY);
+
+		Mat out_image_copy = out_image.clone();
+
+		findContours(out_image_copy, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+		Semaphore semaphore("test_sem");
+		semaphore.lock();
+		ROS_INFO("imageDepthCb semaphore in");
+
+		circleList.clear();
+
+		 for (int i=0; i<contours.size(); i++) {
+
+			 Point pt1 = Point(639, 479);
+			 Point pt2 = Point(0, 0);
+
+			 for(int j=0; j<contours[i].size(); ++j){
+				 pt1.x = min(pt1.x, contours[i][j].x );
+				 pt1.y = min(pt1.y, contours[i][j].y );
+
+				 pt2.x = max(pt2.x, contours[i][j].x );
+				 pt2.y = max(pt2.y, contours[i][j].y );
+			 }
+
+			 int a = (pt2.x - pt1.x);
+			 int center_y = (pt1.y + pt2.y)/2;
+
+			 CIRCLE circle;
+			 circle.r = a/2;
+			 circle.x = pt1.x + circle.r;
+			 circle.y = pt1.y + circle.r;
+			 circleList.push_back(circle);
+			 ROS_INFO("push back circle, vector size = %d",circleList.size());
+
+			 /*
+			 msg = Int16MultiArray()
+			 msg.layout.dim = [MultiArrayDimension(signal, 1, 1)]
+			 msg.data = datadict[signal]*/
+
+		 }
+		ROS_INFO("imageDepthCb semaphore out");
+		 semaphore.unlock();
 
 
+#ifdef _ON_PC_
 
-		imshow(WINDOW_COUNT, trash);
+//		imshow(WINDOW_COUNT, trash);
 
-		imshow(WINDOW_GREY, gray);
+//		imshow(WINDOW_GREY, gray);
 		//  waitKey(3);
 
-		imshow(WINDOW_ORG, countMap);
+//		imshow(WINDOW_ORG, countMap);
 
 		imshow(WINDOW_OUT, out_image);
 
 		waitKey(3);
+
+#endif
 
 		image_pub_.publish(cv_ptr->toImageMsg());
 	}
