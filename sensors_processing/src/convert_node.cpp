@@ -1,4 +1,4 @@
-#define _ON_PC_ 1
+//#define _ON_PC_ 1
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -74,6 +74,7 @@ bool fristLoop = true;
 Mat firstImage;
 Mat out_image;
 
+
 #ifdef _ON_PC_
 
 static const char WINDOW_GREY[] = "Gray";
@@ -98,7 +99,7 @@ public:
 	ImageConverter() :
 			it_(nh_) {
 		image_pub_ = it_.advertise("out", 1);
-		image_depth_sub_ = it_.subscribe("/camera/depth/image_raw", 1, &ImageConverter::depthImageCb, this);
+		image_depth_sub_ = it_.subscribe("/camera/depth_registered/image_raw", 1, &ImageConverter::depthImageCb, this);
 
 		image_sub_ = it_.subscribe("/camera/rgb/image_color", 1, &ImageConverter::imageCb, this);
 
@@ -118,6 +119,7 @@ public:
 	}
 
 	~ImageConverter() {
+
 #ifdef _ON_PC_
 
 		destroyWindow(WINDOW_GREY);
@@ -152,15 +154,25 @@ public:
 
 		for(int i=0; i< circleList.size(); ++i ){
 
-			ROS_INFO("draw circle %d",i);
-			 Point pt1 = Point(circleList[0].x -circleList[0].r, circleList[0].y - circleList[0].r);
-			 Point pt2 = Point(circleList[0].x +circleList[0].r, circleList[0].y + circleList[0].r);
+
+			 Point pt1 = Point(circleList[i].x -circleList[i].r, circleList[i].y - circleList[i].r);
+			 Point pt2 = Point(circleList[i].x +circleList[i].r, circleList[i].y + circleList[i].r);
+			 ROS_INFO("draw circle %d (%d,%d) - (%d,%d)",i, pt1.x, pt1.y, pt2.x, pt2.y);
 			 rectangle(gray, pt1, pt2, 255);
 		}
 
 
 
 		semaphore.unlock();
+
+		cv_bridge::CvImage out_msg;
+		out_msg.header   = cv_ptr->header; // Same timestamp and tf frame as input image
+		out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
+		out_msg.image    = gray; // Your cv::Mat
+
+		image_pub_.publish(out_msg.toImageMsg());
+
+	//	image_pub_.publish(gray);
 
 #ifdef _ON_PC_
 		imshow(WINDOW_COLOR_1, gray);
@@ -228,32 +240,6 @@ public:
 
 		ROS_INFO("(320, 400) =  %d ", (int)pixVal);
 
-	//	orginal.at<uint16_t>(400, 320) = 60000;
-
-/*
-		Mat countMap = gray.clone();*/
-
-/*
-		for(int x =0; x < 640; ++x){
-				for(int y = 0; y < 480; ++y){
-					if(orginal.at<uint16_t>(y, x) > firstImage.at<uint16_t>(y, x)  ){
-						orginal.at<uint16_t>(y, x) -= firstImage.at<uint16_t>(y, x);
-					//	orginal.at<uint16_t>(y, x) = 20000;
-					}
-					else{
-						orginal.at<uint16_t>(y, x)  = 0;
-					}
-
-				}
-			}*/
-
-
-
-//		orginal.convertTo(gray, CV_8UC1, 1./16);
-
-//		firstImage.convertTo(orginal, CV_8UC1, 1./16);
-
-	//	orginal.at<uint16_t>(400, 320) = 60000;
 
 		std::vector < std::vector<Point> > contours;
 	//	findContours(countMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
@@ -267,9 +253,6 @@ public:
 		Mat elem = (Mat_<int>(3, 3) << 1, 1, 1, 1, 1, 1, 1, 1, 1);
 		Point anchor = Point(-1, -1);
 
-//		dilate(gray, gray, elem, anchor, 1);
-//		dilate(gray, gray, elem, anchor, 1);
-//		dilate(gray, gray, elem, anchor, 1);
 		dilate(gray, gray, elem, anchor, 1);
 
 //		cv.MorphologyEx(image, image5, temp, element, cv.CV_MOP_CLOSE, 2);
@@ -287,17 +270,6 @@ public:
 
 		Mat empty = gray.clone();
 		threshold(gray, empty, 255, 255, THRESH_BINARY);
-
-/*
-		for(int x =0; x < 640; ++x){
-			for(int y = 0; y < 480; ++y){
-				cont.at<uint16_t>(y, x)  = 0;
-
-			}
-		}*/
-
-
-
 
 		findContours(countMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 
@@ -385,6 +357,11 @@ public:
 
 			 CIRCLE circle;
 			 circle.r = a/2;
+
+			 if(circle.r < 10 || circle.r > 20){
+							 continue;
+			 }
+
 			 circle.x = pt1.x + circle.r;
 			 circle.y = pt1.y + circle.r;
 			 circleList.push_back(circle);
@@ -415,7 +392,7 @@ public:
 
 #endif
 
-		image_pub_.publish(cv_ptr->toImageMsg());
+	//	image_pub_.publish(cv_ptr->toImageMsg());
 	}
 };
 
