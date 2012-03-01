@@ -139,6 +139,8 @@ namespace sensors_processing
       double double_param2;
 //#line 12 "../cfg/Tutorials.cfg"
       int morphIterations;
+//#line 13 "../cfg/Tutorials.cfg"
+      int ringWeight;
 //#line 138 "/opt/ros/electric/stacks/driver_common/dynamic_reconfigure/templates/ConfigType.h"
 
     bool __fromMessage__(dynamic_reconfigure::Config &msg)
@@ -263,6 +265,14 @@ namespace sensors_processing
       __default__.morphIterations = 1;
 //#line 12 "../cfg/Tutorials.cfg"
       __param_descriptions__.push_back(TutorialsConfig::AbstractParamDescriptionConstPtr(new TutorialsConfig::ParamDescription<int>("morphIterations", "int", 0, "morph iterations", "", &TutorialsConfig::morphIterations)));
+//#line 13 "../cfg/Tutorials.cfg"
+      __min__.ringWeight = 0;
+//#line 13 "../cfg/Tutorials.cfg"
+      __max__.ringWeight = 20;
+//#line 13 "../cfg/Tutorials.cfg"
+      __default__.ringWeight = 0;
+//#line 13 "../cfg/Tutorials.cfg"
+      __param_descriptions__.push_back(TutorialsConfig::AbstractParamDescriptionConstPtr(new TutorialsConfig::ParamDescription<int>("ringWeight", "int", 0, "ring weight", "", &TutorialsConfig::ringWeight)));
 //#line 239 "/opt/ros/electric/stacks/driver_common/dynamic_reconfigure/templates/ConfigType.h"
     
       for (std::vector<TutorialsConfig::AbstractParamDescriptionConstPtr>::const_iterator i = __param_descriptions__.begin(); i != __param_descriptions__.end(); i++)
