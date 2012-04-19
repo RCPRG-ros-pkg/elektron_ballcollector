@@ -21,11 +21,10 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int16MultiArray.h>
 
-//      maksymalny rozmiar piłeczki - mieści się w kwadracie o boku 37px, czyli jej promień to ok 14px, czyli rozmiar 14^2*pi = ok. 615px
-//      maksymalny obwód to 2*pi*r =
+#include <tf/transform_listener.h>
+#include <costmap_2d/costmap_2d_ros.h>
 
-//      z odległości 100cm piłeczka ma rozmiar ok 360px
-//      z odległości 70cm piłeczka ma rozmiar ok 655px
+using namespace cv;
 
 using ecl::Semaphore;
 
@@ -43,13 +42,8 @@ int morphIterations = 1;
 int ringWeight = 0;
 int robotRun = 1;
 
-/*void printGaussianPoiont(Mat &image, int x, int y, int r ){
- for(int i=x-r; i<x+r; ++i){
- for(int j=y-r; j<y+r; ++j){
- image.at<uint16_t>(y, x) = 127;
- }
- }
- }*/
+
+
 
 void callback(sensors_processing::TutorialsConfig &config, uint32_t level) {
 	ROS_INFO("Reconfigure Request: %f %f", config.double_param1,
@@ -61,7 +55,15 @@ void callback(sensors_processing::TutorialsConfig &config, uint32_t level) {
 	ringWeight = config.ringWeight;
 }
 
-using namespace cv;
+int getDistance(CIRCLE circle);
+int getClosestId(std::vector<CIRCLE> circles );
+void drawAllCrircles(std::vector<CIRCLE> circles, Mat mat );
+
+
+void publishAlgState(int state);
+
+
+
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -88,26 +90,29 @@ class ImageConverter {
 	image_transport::Subscriber image_depth_sub_;
 	ros::Publisher vel_pub_;
 	ros::Publisher state_pub_;
+	ros::Publisher alghoritm_state_pub_;				// 	0- explore, 1-to ball
+
+
 
 	int counter;
 
 	int hooverOn;
 public:
 	ImageConverter() :
-			it_(nh_) {
-		image_pub_ = it_.advertise("out", 1);
-		image_depth_sub_ = it_.subscribe("/camera/depth_registered/image_raw",
-				1, &ImageConverter::depthImageCb, this);
+		it_(nh_) {
 
-		image_sub_ = it_.subscribe("/camera/rgb/image_color", 1,
-				&ImageConverter::imageCb, this);
+		image_depth_sub_ = it_.subscribe("/camera/depth_registered/image_raw", 1, &ImageConverter::depthImageCb, this);
+		image_sub_ = it_.subscribe("/camera/rgb/image_color", 1, &ImageConverter::imageCb, this);
 
 		vel_pub_ = nh_.advertise < geometry_msgs::Twist > ("cmd_vel", 1);
-
 		state_pub_ = nh_.advertise < std_msgs::Int16 > ("state", 1);
+		image_pub_ = it_.advertise("out", 1);
+
+		alghoritm_state_pub_ =   nh_.advertise < std_msgs::Int16 > ("alghoritm_state", 1);
 
 		counter = 0;
 		hooverOn = 0;
+
 		Semaphore semaphore("test_sem");
 		semaphore.unlock();
 
@@ -135,16 +140,11 @@ public:
 #endif
 	}
 
-	int getDistance(CIRCLE circle){
 
-		int x = circle.x;
-		int y = circle.y;
-
-		double dist = sqrt( pow(320-x, 2) + pow(480-y, 2) );
-
-		return (int)dist;
-	}
-
+	/**
+	 * Callback obrazka kolorowego. Teraz nie jest wykorzystywany
+	 * w algorytmie. sluzy tylko do informacji.
+	 */
 	void imageCb(const sensor_msgs::ImageConstPtr& msg) {
 		ROS_INFO("I heard color image");
 
@@ -169,6 +169,8 @@ public:
 
 		Semaphore semaphore("test_sem");
 		semaphore.lock();
+		
+		
 		//              ROS_INFO("imageCb semaphore in");
 
 		int circleIndex = -1;
@@ -176,76 +178,64 @@ public:
 		int minDistIndex = -1;
 		int minDist = 10000;
 
-		for (unsigned int j = 0; j < circleList.size(); ++j) {
 
-			Point pt1 = Point(circleList[j].x - circleList[j].r,
-					circleList[j].y - circleList[j].r);
-			Point pt2 = Point(circleList[j].x + circleList[j].r,
-					circleList[j].y + circleList[j].r);
-			ROS_INFO("draw circle %d (%d,%d) - (%d,%d)", j, pt1.x, pt1.y, pt2.x,pt2.y);
+		drawAllCrircles(circleList, gray);
 
+		//	przechodzimy po wszystkich okręgach
+		//	i szukamy okręgu leżącego najbliżej
+		
+		minDistIndex = getClosestId(circleList);
+		
 
-			if (pt2.y > 479 || pt2.x > 639) {
-				continue;
-			}
-
-			rectangle(gray, pt1, pt2, 255);
-			if(getDistance(circleList[j]) < minDist){
-				minDist = getDistance(circleList[j]);
-				minDistIndex = j;
-			}
-			ROS_INFO("j=%d   dist=%d  minDist=%d", j, getDistance(circleList[j]), minDist );
-		}
-
+		//	jeśli istnieje jakiś okrąg
 		if (minDistIndex != -1) {
+
+			publishAlgState(1);
+
 			robotRun = 1;
 			ROS_INFO("minDistIndex=%d ", minDistIndex);
 
 			int circleX = circleList[minDistIndex].x;
-			int circleY = circleList[minDistIndex].y; //, circleList[j].y
+			int circleY = circleList[minDistIndex].y;
 
-			 circle(gray, Point(circleX, circleY) , 20, 0);
+			// rysujemy okrąg, do którego jedzie robot
+			circle(gray, Point(circleX, circleY) , 20, 0);
 
-
+			//	wyznaczamy sterowanie silników
 
 			geometry_msgs::Twist vel;
 			vel.angular.z = (320.0 - (float) circleX) / 500.0;
-			vel.linear.x = (0.1 - (abs(320 - circleX)) / 3200.0)
-					* (1 - pow(circleY / 460.0, 1));
+			vel.linear.x = (0.1 - (abs(320 - circleX)) / 3200.0) * (1 - pow(circleY / 460.0, 1));
 
-			vel_pub_.publish(vel);
-			//float linX =
+			//vel_pub_.publish(vel);
 
-			ROS_INFO(
-					"circle area1 =%f (x,y)=(%d,%d) vel.linear.x = %f, vel.angular.z = %f",
-					maxArea, circleX, circleY, vel.linear.x, vel.angular.z);
+
+			//ROS_INFO("circle area1 =%f (x,y)=(%d,%d) vel.linear.x = %f, vel.angular.z = %f",
+			//		maxArea, circleX, circleY, vel.linear.x, vel.angular.z);
+			
+			//	jesli robot podjechal wystarczajaco blisko to zasysa pilke
 			if (circleY > 430 && circleX > 315 && circleX < 325) {
-				ROS_INFO("start hoover");
-				onHoover();
-				//      vel.linear.x = 0;
-				vel.angular.z = 0;
-				vel.linear.x = 0.2;
-				vel_pub_.publish(vel);
-				ros::Duration(1.0).sleep();
-				vel.linear.x = 0;
-				vel_pub_.publish(vel);
-				ros::Duration(1.0).sleep();
-				offHoover();
-				ros::Duration(3.0).sleep();
-				ROS_INFO("stop hoover");
+//				suckBall();
 			}
 
 		} else {
+			publishAlgState(0);
 			offHoover();
-			stopRobot();
+		//	stopRobot();
 		}
 
+
 		semaphore.unlock();
+
+
 
 		cv_bridge::CvImage out_msg;
 		out_msg.header = cv_ptr->header; // Same timestamp and tf frame as input image
 		out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
 		out_msg.image = gray; // Your cv::Mat
+
+
+
 
 		image_pub_.publish(out_msg.toImageMsg());
 
@@ -260,229 +250,23 @@ public:
 
 	}
 
-	void imageCb1(const sensor_msgs::ImageConstPtr& msg) {
-		ROS_INFO("I heard color image");
-
-		cv_bridge::CvImagePtr cv_ptr;
-		try {
-			cv_ptr = cv_bridge::toCvCopy(msg, enc::BGR8);
-		} catch (cv_bridge::Exception& e) {
-			ROS_ERROR("cv_bridge exception: %s", e.what());
-			return;
-
-		}
-
-		Mat gray;
-		int count = 0;
-		double area = 0.0;
-		double area1 = 0.0;
-		double x = 0.0;
-		double y = 0.0;
-		double maxArea = 0.0;
-
-		cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
-
-		Semaphore semaphore("test_sem");
-		semaphore.lock();
-//              ROS_INFO("imageCb semaphore in");
-
-		int circleIndex = -1;
-
-		for (unsigned int j = 0; j < circleList.size(); ++j) {
-
-			Point pt1 = Point(circleList[j].x - circleList[j].r,
-					circleList[j].y - circleList[j].r);
-			Point pt2 = Point(circleList[j].x + circleList[j].r,
-					circleList[j].y + circleList[j].r);
-			ROS_INFO("draw circle %d (%d,%d) - (%d,%d)", j, pt1.x, pt1.y, pt2.x,
-					pt2.y);
-
-			if (pt2.y > 479 || pt2.x > 639) {
-				continue;
-			}
-
-			Range rowRange = Range(pt1.y, pt2.y);
-			Range colRange = Range(pt1.x, pt2.x);
-
-			//              ROS_INFO("draw  %d rowRange (%d,%d) - colRange (%d,%d)",i, rowRange.start, rowRange.end, colRange.start, colRange.end);
-			//              ROS_INFO("mat  %d rows %d - cols %d",i, gray.rows, gray.cols);
-
-			Mat currMat = Mat(gray, rowRange, colRange).clone();
-
-			int cols = currMat.cols;
-			int rows = currMat.rows;
-
-			int backGrnColor = ((int) currMat.at < uint8_t
-					> (0, 0) + (int) currMat.at < uint8_t
-					> (0, cols - 1) + (int) currMat.at < uint8_t
-					> (rows - 1, 0) + (int) currMat.at < uint8_t
-					> (rows - 1, cols - 1)) / 4;
-
-			int xOffset = pt1.x;
-			int yOffset = pt1.y;
-
-			int ballColor = (int) currMat.at < uint8_t
-					> ((int) rows / 2, (int) cols / 2);
-
-			rectangle(gray, pt1, pt2, 255);
-
-			/*      if(abs(ballColor - backGrnColor) > 10){
-			 rectangle(gray, pt1, pt2, 255);
-			 continue;
-			 }*/
-
-			int trashValue = (ballColor + backGrnColor) / 2;
-
-			threshold(currMat, currMat, trashValue, 255, THRESH_BINARY);
-			//      adaptiveThreshold(currMat, currMat, trashValue, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, 2.0);
-
-			std::vector < std::vector<Point> > contours;
-			findContours(currMat, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-
-			//      ROS_INFO("There are %d contours", contours.size());
-
-			Point2f center(0.f, 0.f);
-			float radius = 0.f;
-
-			for (int i = 0; i < contours.size(); i++) {
-				//      drawContours(gray, contours, i, 255);
-				area = contourArea(contours[i]);
-				//1030
-				if (area < 2030 && area > 100) {
-
-					Moments mom = moments(contours[i]);
-
-					double M11 = mom.m11 - (mom.m10 * mom.m01) / mom.m00;
-					double M02 = mom.m02 - (mom.m01 * mom.m01) / mom.m00;
-					double M20 = mom.m20 - (mom.m10 * mom.m10) / mom.m00;
-
-					// for circle it should be ~0.0063
-					double M7 = (M20 * M02 - M11 * M11)
-							/ (mom.m00 * mom.m00 * mom.m00 * mom.m00);
-
-					// circle
-					if (M7 < 0.007 && M7 > 0.0061) {
-
-						//                   rectangle(gray, pt1, pt2, 0);
-
-						//                      drawContours(cv_ptr->image, contours, i, CV_RGB(255, 0, 255));
-						//                      drawContours(gray, contours, i, CV_RGB(255, 0, 255));
-
-						double r = sqrt(area / 3.14);
-
-						minEnclosingCircle(contours[i], center, radius);
-						area1 = area;
-
-						//circle(gray, center, r, CV_RGB(255, 0, 255));
-
-						if (area > maxArea) {
-							maxArea = area;
-							x = center.x;
-							y = center.y;
-						}
-						//      rectangle(gray, pt1, pt2, 255);
-						/*                                              center.x += xOffset;
-						 center.y += yOffset;
-						 circle(gray, center , r, 0);*/
-						//                                      ROS_INFO("%d   circle, M7 = %f , size = %f, odlegosc od kamery = %f, x=%f, y=%f",i,M7, area, 10.5/r, center.x, center.y);
-						++count;
-
-						circleIndex = j;
-
-						//      ballList.push_back(new PosAndId(count, center.x, center.y));
-
-					}
-					// probably circle
-					else if (M7 < 0.0085) {
-						//                                      ROS_INFO("%d    probably circle, M7 = %f, area=%d",i,M7, area);
-
-					}
-					// there is small chance that it's circular, but show them too
-					else if (M7 < 0.011) {
-						//                                      ROS_INFO("%d    no circle, M7 = %f, area=%d",i,M7, area);
-					}
-
-					//      ROS_INFO("area0 = %f  area1 = %f", area0, area1);
-					//      ROS_INFO("M7 = %f",M7);
-				}
-			}
-
-			/*
-
-			 int xOffset = pt1.x;
-			 int yOffset = pt1.y;
-			 for (unsigned int y = 0; y < rows; ++y) {
-			 for (unsigned int x = 0; x < cols; ++x) {
-			 gray.at< uint8_t > (yOffset+ y, xOffset+x) = currMat.at < uint8_t > (y, x);
-			 }
-			 }
-			 */
-
-//                      ROS_INFO("backGrnColor =   %d ballColor = %d",backGrnColor, ballColor);
-			//threshold(out_image, trash, 75, 255, THRESH_BINARY);
-
-			//     treshold wewnatrz kazdego kwadratu
-		}
-
-		/*
-
-		 if(count == 1 ){
-		 robotRun = 1;
-
-		 int circleX = circleList[circleIndex].x;
-		 int circleY = circleList[circleIndex].y;//, circleList[j].y
-
-		 geometry_msgs::Twist vel;
-		 vel.angular.z = (320.0 - (float)circleX)/500.0;
-		 vel.linear.x = (0.1 - (abs(320 - circleX) )/3200.0)*(1 - pow(circleY/460.0, 1) );
-
-		 vel_pub_.publish(vel);
-		 //float linX =
-
-		 ROS_INFO("circle area1 =%f (x,y)=(%d,%d) vel.linear.x = %f, vel.angular.z = %f", maxArea, circleX, circleY, vel.linear.x, vel.angular.z);
-		 if(circleY > 430 && circleX >315 && circleX < 325){
-		 ROS_INFO("start hoover");
-		 onHoover();
-		 //      vel.linear.x = 0;
-		 vel.angular.z = 0;
-		 vel.linear.x = 0.2;
-		 vel_pub_.publish(vel);
-		 ros::Duration(1.0).sleep();
-		 vel.linear.x = 0;
-		 vel_pub_.publish(vel);
-		 ros::Duration(1.0).sleep();
-		 offHoover();
-		 ros::Duration(3.0).sleep();
-		 ROS_INFO("stop hoover");
-		 }
-		 }
-		 else{
-		 offHoover();
-		 stopRobot();
-		 }
-
-
-		 */
-
-		semaphore.unlock();
-
-		cv_bridge::CvImage out_msg;
-		out_msg.header = cv_ptr->header; // Same timestamp and tf frame as input image
-		out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
-		out_msg.image = gray; // Your cv::Mat
-
-		image_pub_.publish(out_msg.toImageMsg());
-
-		//      image_pub_.publish(gray);
-
-#ifdef _ON_PC_
-		imshow(WINDOW_COLOR_1, gray);
-
-		waitKey(3);
-#endif
-//              ROS_INFO("imageCb semaphore out");
-
+	void suckBall(){
+		ROS_INFO("start hoover");
+		onHoover();
+		//      vel.linear.x = 0;
+		geometry_msgs::Twist vel;
+		vel.angular.z = 0;
+		vel.linear.x = 0.2;
+		vel_pub_.publish(vel);
+		ros::Duration(1.0).sleep();
+		vel.linear.x = 0;
+		vel_pub_.publish(vel);
+		ros::Duration(1.0).sleep();
+		offHoover();
+		ros::Duration(3.0).sleep();
+		ROS_INFO("stop hoover");
 	}
+
 
 	void depthImageCb(const sensor_msgs::ImageConstPtr& msg) {
 		ROS_INFO("I heard depth image");
@@ -658,8 +442,7 @@ public:
 			}
 			int ob = 3 * r;
 			if (numberOfWhitePointInCircle > numberOfWhitePointOutCircle) {
-				ROS_INFO("                           CIRCLE (%d,%d)",
-						xOffset + r, yOffset + r);
+//				ROS_INFO("                           CIRCLE (%d,%d)", xOffset + r, yOffset + r);
 				//               rectangle(gray, pt1, pt2, 255, CV_FILLED);
 				//      circle(out_image,  center, a/2, 255, CV_FILLED);
 
@@ -676,9 +459,9 @@ public:
 
 			}
 
-			ROS_INFO("%d in circle= %d  out circle= %d all pixels = %d r=%d \n",
-					i, numberOfWhitePointInCircle, numberOfWhitePointOutCircle,
-					numberOfPixels, r);
+//			ROS_INFO("%d in circle= %d  out circle= %d all pixels = %d r=%d \n",
+//					i, numberOfWhitePointInCircle, numberOfWhitePointOutCircle,
+//					numberOfPixels, r);
 
 			drawContours(empty, contours, i, 255);
 
@@ -711,7 +494,7 @@ public:
 //                semaphore.lock();
 		//      ROS_INFO("imageDepthCb semaphore in");
 
-		//  circleList.clear();
+	//	  circleList.clear();
 
 		for (unsigned int i = 0; i < contours.size(); i++) {
 
@@ -727,30 +510,12 @@ public:
 			}
 
 			int a = (pt2.x - pt1.x);
-//                       int center_y = (pt1.y + pt2.y)/2;
-
-			/*
-			 CIRCLE circle;
-			 circle.r = a/2;
-
-			 if(circle.r < 10 || circle.r > 20){
-			 continue;
-			 }
-
-			 circle.x = pt1.x + circle.r;
-			 circle.y = pt1.y + circle.r;
-			 circleList.push_back(circle);
-
-			 */
-//                       ROS_INFO("push back circle (%d,%d), r=%d, vector size = %d", circle.x, circle.y, circle.r, (int)circleList.size() );
-			/*
-			 msg = Int16MultiArray()
-			 msg.layout.dim = [MultiArrayDimension(signal, 1, 1)]
-			 msg.data = datadict[signal]*/
 
 		}
+		ROS_INFO("circleList.size = %d", circleList.size());
+		
 //              ROS_INFO("imageDepthCb semaphore out");
-		semaphore.unlock();
+//		semaphore.unlock();
 
 #ifdef _ON_PC_
 
@@ -767,7 +532,7 @@ public:
 
 #endif
 
-		//      image_pub_.publish(cv_ptr->toImageMsg());
+	//	      image_pub_.publish(cv_ptr->toImageMsg());
 	}
 	void stopRobot() {
 		if (robotRun == 0)
@@ -805,6 +570,13 @@ public:
 		state_pub_.publish(state);
 
 	}
+
+	void publishAlgState(int state){
+		std_msgs::Int16 stateMsg;
+		stateMsg.data = state;
+		alghoritm_state_pub_.publish(stateMsg);
+	}
+
 };
 
 int main(int argc, char** argv) {
@@ -821,6 +593,81 @@ int main(int argc, char** argv) {
 	return 0;
 
 }
+
+int getClosestId(std::vector<CIRCLE> circles ){
+	
+	int retVal = -1;
+	int minDist = 10000;
+	
+	for (unsigned int j = 0; j < circles.size(); ++j) {
+		
+		
+		Point pt1 = Point(circles[j].x - circles[j].r, circles[j].y - circles[j].r);
+		Point pt2 = Point(circles[j].x + circles[j].r, circles[j].y + circles[j].r);
+//		ROS_INFO("draw circle %d (%d,%d) - (%d,%d)", j, pt1.x, pt1.y, pt2.x,pt2.y);
+
+		//	okrąg wychodzi poza obrazek
+		if (pt2.y > 479 || pt2.x > 639) {
+			continue;
+		}
+		//	kwadrat w opisany na okręgu
+//		rectangle(gray, pt1, pt2, 255);
+
+		if(getDistance(circles[j]) < minDist){
+			minDist = getDistance(circles[j]);
+			retVal = j;
+		}
+	//	ROS_INFO("j=%d   dist=%d  minDist=%d", j, getDistance(circles[j]), minDist );
+	}
+	return retVal;
+	
+}
+
+void drawAllCrircles(std::vector<CIRCLE> circles, Mat mat ){
+	
+	for (unsigned int j = 0; j < circles.size(); ++j) {
+		
+		Point pt1 = Point(circles[j].x - circles[j].r, circles[j].y - circles[j].r);
+		Point pt2 = Point(circles[j].x + circles[j].r, circles[j].y + circles[j].r);
+		//	okrąg wychodzi poza obrazek
+		if (pt2.y > 479 || pt2.x > 639) {
+			continue;
+		}
+		//	kwadrat w opisany na okręgu
+		rectangle(mat, pt1, pt2, 255);
+
+	}
+}
+
+
+
+/**
+ * Metoda oblicza odleglosc okręgu circle od środka dołu obrazu.
+ */
+int getDistance(CIRCLE circle){
+
+	int x = circle.x;
+	int y = circle.y;
+
+	double dist = sqrt( pow(320-x, 2) + pow(480-y, 2) );
+
+	return (int)dist;
+}
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
  if (contours.size()) {
@@ -862,4 +709,194 @@ int main(int argc, char** argv) {
  circle( gray, center, radius, Scalar(255,255,255), 3, 8, 0 );
  }
  */
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+
+
+
+
+	void imageCb1(const sensor_msgs::ImageConstPtr& msg) {
+		ROS_INFO("I heard color image");
+
+		cv_bridge::CvImagePtr cv_ptr;
+		try {
+			cv_ptr = cv_bridge::toCvCopy(msg, enc::BGR8);
+		} catch (cv_bridge::Exception& e) {
+			ROS_ERROR("cv_bridge exception: %s", e.what());
+			return;
+
+		}
+
+		Mat gray;
+		int count = 0;
+		double area = 0.0;
+		double area1 = 0.0;
+		double x = 0.0;
+		double y = 0.0;
+		double maxArea = 0.0;
+
+		cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
+
+		Semaphore semaphore("test_sem");
+		semaphore.lock();
+//              ROS_INFO("imageCb semaphore in");
+
+		int circleIndex = -1;
+
+		for (unsigned int j = 0; j < circleList.size(); ++j) {
+
+			Point pt1 = Point(circleList[j].x - circleList[j].r,
+					circleList[j].y - circleList[j].r);
+			Point pt2 = Point(circleList[j].x + circleList[j].r,
+					circleList[j].y + circleList[j].r);
+			ROS_INFO("draw circle %d (%d,%d) - (%d,%d)", j, pt1.x, pt1.y, pt2.x,
+					pt2.y);
+
+			if (pt2.y > 479 || pt2.x > 639) {
+				continue;
+			}
+
+			Range rowRange = Range(pt1.y, pt2.y);
+			Range colRange = Range(pt1.x, pt2.x);
+
+			//              ROS_INFO("draw  %d rowRange (%d,%d) - colRange (%d,%d)",i, rowRange.start, rowRange.end, colRange.start, colRange.end);
+			//              ROS_INFO("mat  %d rows %d - cols %d",i, gray.rows, gray.cols);
+
+			Mat currMat = Mat(gray, rowRange, colRange).clone();
+
+			int cols = currMat.cols;
+			int rows = currMat.rows;
+
+			int backGrnColor = ((int) currMat.at < uint8_t
+					> (0, 0) + (int) currMat.at < uint8_t
+					> (0, cols - 1) + (int) currMat.at < uint8_t
+					> (rows - 1, 0) + (int) currMat.at < uint8_t
+					> (rows - 1, cols - 1)) / 4;
+
+			int xOffset = pt1.x;
+			int yOffset = pt1.y;
+
+			int ballColor = (int) currMat.at < uint8_t
+					> ((int) rows / 2, (int) cols / 2);
+
+			rectangle(gray, pt1, pt2, 255);
+
+//			     if(abs(ballColor - backGrnColor) > 10){
+//			 rectangle(gray, pt1, pt2, 255);
+//			 continue;
+//			 }
+
+			int trashValue = (ballColor + backGrnColor) / 2;
+
+			threshold(currMat, currMat, trashValue, 255, THRESH_BINARY);
+			//      adaptiveThreshold(currMat, currMat, trashValue, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, 2.0);
+
+			std::vector < std::vector<Point> > contours;
+			findContours(currMat, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+			//      ROS_INFO("There are %d contours", contours.size());
+
+			Point2f center(0.f, 0.f);
+			float radius = 0.f;
+
+			for (int i = 0; i < contours.size(); i++) {
+				//      drawContours(gray, contours, i, 255);
+				area = contourArea(contours[i]);
+				//1030
+				if (area < 2030 && area > 100) {
+
+					Moments mom = moments(contours[i]);
+
+					double M11 = mom.m11 - (mom.m10 * mom.m01) / mom.m00;
+					double M02 = mom.m02 - (mom.m01 * mom.m01) / mom.m00;
+					double M20 = mom.m20 - (mom.m10 * mom.m10) / mom.m00;
+
+					// for circle it should be ~0.0063
+					double M7 = (M20 * M02 - M11 * M11)
+							/ (mom.m00 * mom.m00 * mom.m00 * mom.m00);
+
+					// circle
+					if (M7 < 0.007 && M7 > 0.0061) {
+
+						//                   rectangle(gray, pt1, pt2, 0);
+
+						//                      drawContours(cv_ptr->image, contours, i, CV_RGB(255, 0, 255));
+						//                      drawContours(gray, contours, i, CV_RGB(255, 0, 255));
+
+						double r = sqrt(area / 3.14);
+
+						minEnclosingCircle(contours[i], center, radius);
+						area1 = area;
+
+						//circle(gray, center, r, CV_RGB(255, 0, 255));
+
+						if (area > maxArea) {
+							maxArea = area;
+							x = center.x;
+							y = center.y;
+						}
+						//      rectangle(gray, pt1, pt2, 255);
+
+						//  ROS_INFO("%d   circle, M7 = %f , size = %f, odlegosc od kamery = %f, x=%f, y=%f",i,M7, area, 10.5/r, center.x, center.y);
+						++count;
+
+						circleIndex = j;
+
+						//      ballList.push_back(new PosAndId(count, center.x, center.y));
+
+					}
+					// probably circle
+					else if (M7 < 0.0085) {
+						//                                      ROS_INFO("%d    probably circle, M7 = %f, area=%d",i,M7, area);
+
+					}
+					// there is small chance that it's circular, but show them too
+					else if (M7 < 0.011) {
+						//                                      ROS_INFO("%d    no circle, M7 = %f, area=%d",i,M7, area);
+					}
+
+					//      ROS_INFO("area0 = %f  area1 = %f", area0, area1);
+					//      ROS_INFO("M7 = %f",M7);
+				}
+			}
+
+
+		semaphore.unlock();
+
+		cv_bridge::CvImage out_msg;
+		out_msg.header = cv_ptr->header; // Same timestamp and tf frame as input image
+		out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
+		out_msg.image = gray; // Your cv::Mat
+
+		image_pub_.publish(out_msg.toImageMsg());
+
+		//      image_pub_.publish(gray);
+
+#ifdef _ON_PC_
+		imshow(WINDOW_COLOR_1, gray);
+
+		waitKey(3);
+#endif
+//              ROS_INFO("imageCb semaphore out");
+
+	}
+
+
+
+
+
+
+
+*/
 

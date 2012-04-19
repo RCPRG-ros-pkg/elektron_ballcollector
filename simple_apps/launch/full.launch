@@ -3,8 +3,12 @@
 	<include file="$(find elektron_bringup)/launch/elektron_base.launch" />
 	<include file="$(find elektron_bringup)/launch/elektron_sensors.launch" />
 
-	<node pkg="simple_apps" type="hoover_node" name="hoover" output="screen" />
+<!---	<node pkg="simple_apps" type="hoover_node" name="hoover" output="screen" />	-->
 	
 	<include file="$(find simple_apps)/launch/piotrek_joy.launch" />
 	<include file="$(find openni_launch)/launch/openni.launch" />
+	<include file="$(find elektron_navigation)/launch/local_sick.launch" />	
+<!---	<include file="$(find pcl_to_scan)/launch/kinect_bringup.launch" />-->
+	  
+	
 </launch>
