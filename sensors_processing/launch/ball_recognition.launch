@@ -1,0 +1,10 @@
+<launch>
+  <!--	<include file="$(find sensors_processing)/launch/robot_move.launch" />	-->
+	
+	<node pkg="sensors_processing" type="convert_node" name="convert_node" output="screen">
+		<remap from="cloud_in" to="/openni/rgb/points"/>
+		<remap from="depth_reg" to="/openni/depth_registered/image_raw" />
+		<remap from="image_color" to="/openni/rgb/image_color" />
+		
+	</node>
+</launch>

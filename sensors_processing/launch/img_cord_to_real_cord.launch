@@ -1,0 +1,8 @@
+<launch>
+
+	<node pkg="sensors_processing" type="ptpcl" name="ptpcl" output="screen">
+		<remap from="camera_info" to="/openni/depth_registered/camera_info" />
+		<remap from="image_depth" to="/openni/depth_registered/image_raw" />
+		
+	</node>
+</launch>
