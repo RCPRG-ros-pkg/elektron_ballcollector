@@ -26,7 +26,7 @@
 #define BAUD B19200
  
 // port
-#define PORT ="/dev/ttyUSB1"
+#define PORT ="/dev/hoover"
  
 struct tgetstate{
      
@@ -40,14 +40,15 @@ struct tsetstate{
 class SerialSwitch{
 
 public:
-    	SerialSwitch(const std::string& port, int baud = BAUD);
-
+    SerialSwitch(const std::string& port, int baud = BAUD);
 	~SerialSwitch();
-	void update();
+	void update(int state);
    
     
    	bool isConnected();
-    	void dump();
+    void dump();
+    int getNumbeOfBalls();
+    bool mySelect(int file_desc);
 private:
 
 // serial port descriptior

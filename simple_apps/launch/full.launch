@@ -1,14 +1,18 @@
 <launch>
 	
 	<include file="$(find elektron_bringup)/launch/elektron_base.launch" />
-	<include file="$(find elektron_bringup)/launch/elektron_sensors.launch" />
-
-<!---	<node pkg="simple_apps" type="hoover_node" name="hoover" output="screen" />	-->
-	
+	<include file="$(find elektron_bringup)/launch/elektron_sensors.launch" />		
+	<include file="$(find elektron_navigation)/launch/local_sick.launch" />			
 	<include file="$(find simple_apps)/launch/piotrek_joy.launch" />
-	<include file="$(find openni_launch)/launch/openni.launch" />
-	<include file="$(find elektron_navigation)/launch/local_sick.launch" />	
+	<include file="$(find sensors_processing)/launch/kinect_bringup.launch" />		
+	<include file="$(find sensors_processing)/launch/laser_to_odom.launch" />		
+	<include file="$(find sensors_processing)/launch/full_ball.launch" />			
+	
+<!---	<include file="$(find sensors_processing)/launch/choose_accesible_ball.launch" />	-->
+<!---	<include file="$(find sensors_processing)/launch/choose_one_ball.launch" />			-->
+	
+	<node pkg="simple_apps" type="hoover_node" name="hoover" output="screen" />
+<!---	<include file="$(find openni_launch)/launch/openni.launch" />-->
 <!---	<include file="$(find pcl_to_scan)/launch/kinect_bringup.launch" />-->
-	  
 	
 </launch>

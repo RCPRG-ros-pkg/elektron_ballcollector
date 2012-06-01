@@ -17,8 +17,8 @@
   <depend package="sensor_msgs"/> 
   <depend package="elektron_base" /> 
   <depend package="elektron_sensors" />
-
-  
+  <depend package="actionlib" />
+  <depend package="move_base_msgs"/>
 </package>
 
 

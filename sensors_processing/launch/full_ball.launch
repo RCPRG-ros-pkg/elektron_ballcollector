@@ -1,0 +1,4 @@
+<launch>
+	<include file="$(find sensors_processing)/launch/ball_recognition.launch" />
+	<include file="$(find sensors_processing)/launch/img_cord_to_real_cord.launch" />
+</launch>

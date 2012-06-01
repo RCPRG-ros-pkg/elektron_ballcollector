@@ -246,7 +246,7 @@ namespace sensors_processing
 //#line 10 "../cfg/Tutorials.cfg"
       __max__.double_param1 = 255.0;
 //#line 10 "../cfg/Tutorials.cfg"
-      __default__.double_param1 = 1.0;
+      __default__.double_param1 = 5.0;
 //#line 10 "../cfg/Tutorials.cfg"
       __param_descriptions__.push_back(TutorialsConfig::AbstractParamDescriptionConstPtr(new TutorialsConfig::ParamDescription<double>("double_param1", "double", 0, "A double parameter 1", "", &TutorialsConfig::double_param1)));
 //#line 11 "../cfg/Tutorials.cfg"
@@ -254,7 +254,7 @@ namespace sensors_processing
 //#line 11 "../cfg/Tutorials.cfg"
       __max__.double_param2 = 255.0;
 //#line 11 "../cfg/Tutorials.cfg"
-      __default__.double_param2 = 1.0;
+      __default__.double_param2 = 16.0;
 //#line 11 "../cfg/Tutorials.cfg"
       __param_descriptions__.push_back(TutorialsConfig::AbstractParamDescriptionConstPtr(new TutorialsConfig::ParamDescription<double>("double_param2", "double", 0, "A double parameter 2", "", &TutorialsConfig::double_param2)));
 //#line 12 "../cfg/Tutorials.cfg"
@@ -270,7 +270,7 @@ namespace sensors_processing
 //#line 13 "../cfg/Tutorials.cfg"
       __max__.ringWeight = 20;
 //#line 13 "../cfg/Tutorials.cfg"
-      __default__.ringWeight = 0;
+      __default__.ringWeight = 9;
 //#line 13 "../cfg/Tutorials.cfg"
       __param_descriptions__.push_back(TutorialsConfig::AbstractParamDescriptionConstPtr(new TutorialsConfig::ParamDescription<int>("ringWeight", "int", 0, "ring weight", "", &TutorialsConfig::ringWeight)));
 //#line 239 "/opt/ros/electric/stacks/driver_common/dynamic_reconfigure/templates/ConfigType.h"

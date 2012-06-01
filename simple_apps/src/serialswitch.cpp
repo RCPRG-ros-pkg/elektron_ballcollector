@@ -1,10 +1,10 @@
 /*
-* serialswitch.cpp
-*
-* Created on: Oct 6, 2011
-* Author: pmajcher
-*/
-
+ * serialswitch.cpp
+ *
+ * Created on: Oct 6, 2011
+ * Author: pmajcher
+ */
+#include <ros/ros.h>
 #include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -17,12 +17,8 @@
 
 using namespace std;
 
-
-
-SerialSwitch::SerialSwitch(const std::string& port, int baud){
+SerialSwitch::SerialSwitch(const std::string& port, int baud) {
 	connected = false;
-
-
 
 	fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
 	if (fd >= 0) {
@@ -31,7 +27,7 @@ SerialSwitch::SerialSwitch(const std::string& port, int baud){
 		// set up new settings
 		struct termios newtio;
 		memset(&newtio, 0, sizeof(newtio));
-		newtio.c_cflag = CBAUD | CS8 | CLOCAL | CREAD | CSTOPB;
+		newtio.c_cflag = CBAUD | CS8 | CLOCAL | CREAD;
 		newtio.c_iflag = INPCK; //IGNPAR;
 		newtio.c_oflag = 0;
 		newtio.c_lflag = 0;
@@ -50,24 +46,50 @@ SerialSwitch::SerialSwitch(const std::string& port, int baud){
 
 	_dump = false;
 
-};
+}
+;
 
-SerialSwitch::~SerialSwitch(){
+SerialSwitch::~SerialSwitch() {
 	// restore old port settings
 	if (fd > 0)
 		tcsetattr(fd, TCSANOW, &oldtio);
 	close(fd);
-};
+}
+;
 
-void SerialSwitch::update() {
-	unsigned char data[1] = {0x40} ;
+void SerialSwitch::update(int state) {
 
+//	ROS_INFO("enter update");
+	if (state == 0) {
+		unsigned char data[1] = { 0x61 };
+//		unsigned int ret = 0;
+		tcflush(fd, TCIFLUSH);
+		write(fd, data, 1);
+	}
+	if (state == 1) {
+		unsigned char data[1] = { 0x62 };
+//		unsigned int ret = 0;
+		tcflush(fd, TCIFLUSH);
+		write(fd, data, 1);
+	}
+}
+
+int SerialSwitch::getNumbeOfBalls() {
+
+	unsigned char data[1] = { 'c' };
 	unsigned int ret = 0;
 	tcflush(fd, TCIFLUSH);
 	write(fd, data, 1);
 
-//	while (ret < sizeof(getdata))
-//		ret += read(fd, ((char*) &getdata) + ret, sizeof(getdata) - ret);
+	unsigned char *buff_in;
+
+	char c;
+
+	if(mySelect(fd)){
+		read(fd, &c, 1);
+		return (int)c;
+	}
+//	std::cout << "getNumberOfBalls, ret = " << ret << " balls " << (int) c << std::endl;
 }
 
 void SerialSwitch::dump() {
@@ -75,6 +97,53 @@ void SerialSwitch::dump() {
 }
 
 bool SerialSwitch::isConnected() {
+	if (connected) {
+//		ROS_INFO("SERIAL CONNTECTED");
+	} else {
+//		ROS_INFO("SERIAL NOT CONNTECTED");
+	}
 	return connected;
 }
+
+bool SerialSwitch::mySelect(int file_desc) {
+
+	int n;
+	int max_fd;
+	fd_set input;
+	struct timeval timeout;
+
+	/* Initialize the input set */
+	FD_ZERO(&input);
+	FD_SET(file_desc, &input);
+
+	max_fd = file_desc + 1;
+
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+
+	/* Do the select */
+	n = select(max_fd, &input, NULL, NULL, &timeout);
+
+	/* See if there was an error */
+	if (n < 0){
+		perror("select failed");
+		false;
+	}
+	else if (n == 0){
+		puts("TIMEOUT");
+		false;
+	}
+	else {
+		/* We have input */
+		if (FD_ISSET(fd, &input)){
+			//  process_fd();
+			return true;
+		}
+	}
+
+
+}
+
+
+
 

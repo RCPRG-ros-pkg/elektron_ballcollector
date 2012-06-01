@@ -1,0 +1,10 @@
+<launch>	
+	<node pkg="sensors_processing" type="choose_accessible_balls" name="choose_accessible_balls" output="screen" >
+		<remap from="goal" to="/move_base/goal" />
+		<rosparam file="$(find elektron_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />	
+		<rosparam file="$(find elektron_navigation)/config/local_costmap_params.yaml" command="load" />	
+	</node>
+</launch>
+
+
+<!---	launch-prefix="gdb -args "	-->

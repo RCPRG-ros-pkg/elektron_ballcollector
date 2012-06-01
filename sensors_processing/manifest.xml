@@ -21,7 +21,10 @@
   <depend package="move_base_msgs"/>
   <depend package="navfn"/>
   <depend package="nav_msgs"/>
-
+  <depend package="pcl_ros"/>
+  <depend package="image_geometry"/>
+  <depend package="nodelet"/>
+  <depend package="actionlib"/>
 
 </package>
 

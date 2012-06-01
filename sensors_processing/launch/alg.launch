@@ -1,8 +1,0 @@
-<launch>
-	
-	<include file="$(find sensors_processing)/launch/robot_move.launch" />
-
-	<node pkg="sensors_processing" type="convert_node" name="convert_node" output="screen" />
-	
-	
-</launch>

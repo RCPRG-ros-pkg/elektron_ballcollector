@@ -1,0 +1,6 @@
+<launch>	
+	<node pkg="sensors_processing" type="choose_one_ball" name="choose_one_ball" output="screen" >
+		<remap from="allBalls" to="/accesible_balls" />
+		<remap from="goal" to="/move_base/goal" />
+	</node>
+</launch>

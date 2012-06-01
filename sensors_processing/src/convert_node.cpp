@@ -18,13 +18,31 @@
 #include <sensors_processing/TutorialsConfig.h>
 
 #include <std_msgs/Int16.h>
+#include <std_msgs/String.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseArray.h>
 #include <std_msgs/Int16MultiArray.h>
 
 #include <tf/transform_listener.h>
 #include <costmap_2d/costmap_2d_ros.h>
 
+#include "pcl/point_cloud.h"
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl/ros/conversions.h"
+#include <pcl/io/pcd_io.h>
+
+#include <sensor_msgs/PointCloud2.h>
+
+
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
+
+
 using namespace cv;
+
+
+
 
 using ecl::Semaphore;
 
@@ -32,17 +50,20 @@ typedef struct myCircle {
 	uint16_t x;
 	uint16_t y;
 	uint16_t r;
+	uint16_t depth;
 } CIRCLE;
 
 std::vector<CIRCLE> circleList;
 
-double val1 = 0.0;
-double val2 = 0.0;
+double val1 = 6.0;
+double val2 = 16.0;
 int morphIterations = 1;
-int ringWeight = 0;
+int ringWeight = 9;
 int robotRun = 1;
 
 
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 
 void callback(sensors_processing::TutorialsConfig &config, uint32_t level) {
@@ -60,9 +81,14 @@ int getClosestId(std::vector<CIRCLE> circles );
 void drawAllCrircles(std::vector<CIRCLE> circles, Mat mat );
 
 
-void publishAlgState(int state);
+void publishAlgState(string state);
+void publishAllBalls();
 
-
+/**
+ * Metoda przeklada wspolrzedne 
+ * 
+ **/
+void transformFromImageToOdom(double x_image, double y_image, double &x_odom, double &y_odom);
 
 
 namespace enc = sensor_msgs::image_encodings;
@@ -84,6 +110,7 @@ static const char WINDOW_COLOR_1[] ="Image";
 
 class ImageConverter {
 	ros::NodeHandle nh_;
+
 	image_transport::ImageTransport it_;
 	image_transport::Subscriber image_sub_;
 	image_transport::Publisher image_pub_;
@@ -91,30 +118,57 @@ class ImageConverter {
 	ros::Publisher vel_pub_;
 	ros::Publisher state_pub_;
 	ros::Publisher alghoritm_state_pub_;				// 	0- explore, 1-to ball
+	ros::Publisher balls_pub_;							//	publikuje wszsytkie pileczki
 
+	ros::Subscriber point_cloud_sub_;
 
 
 	int counter;
 
 	int hooverOn;
-public:
-	ImageConverter() :
-		it_(nh_) {
+	bool explore;
 
-		image_depth_sub_ = it_.subscribe("/camera/depth_registered/image_raw", 1, &ImageConverter::depthImageCb, this);
-		image_sub_ = it_.subscribe("/camera/rgb/image_color", 1, &ImageConverter::imageCb, this);
+	int hysteresis;
+
+public:
+	MoveBaseClient ac;
+	void stopExplore();
+	void startExplore();
+
+	ImageConverter() :
+		it_(nh_), ac("move_base", true) {
+
+		image_depth_sub_ = it_.subscribe("depth_reg", 1, &ImageConverter::depthImageCb, this);
+		image_sub_ = it_.subscribe("image_color", 1, &ImageConverter::imageCb, this);
 
 		vel_pub_ = nh_.advertise < geometry_msgs::Twist > ("cmd_vel", 1);
 		state_pub_ = nh_.advertise < std_msgs::Int16 > ("state", 1);
 		image_pub_ = it_.advertise("out", 1);
 
-		alghoritm_state_pub_ =   nh_.advertise < std_msgs::Int16 > ("alghoritm_state", 1);
+		alghoritm_state_pub_ =   nh_.advertise < std_msgs::String > ("alghoritm_state", 1);
+		balls_pub_ = nh_.advertise < geometry_msgs::PoseArray > ("allBalls", 1);
+
+	//	cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	//	point_cloud_sub_ = nh_.subscribe<sensor_msgs::PointCloud2> ("/camera/depth_registered/points", 10, &ImageConverter::PTScallback, this);
+		point_cloud_sub_ = nh_.subscribe<sensor_msgs::PointCloud2> ("cloud_in", 10, &ImageConverter::PTScallback, this);
+
+
 
 		counter = 0;
 		hooverOn = 0;
 
+		hysteresis = 0;
+
 		Semaphore semaphore("test_sem");
 		semaphore.unlock();
+		explore = false;
+
+		 val1 = 6.0;
+		 val2 = 16.0;
+		 morphIterations = 1;
+		 ringWeight = 9;
+
 
 #ifdef _ON_PC_
 
@@ -146,7 +200,7 @@ public:
 	 * w algorytmie. sluzy tylko do informacji.
 	 */
 	void imageCb(const sensor_msgs::ImageConstPtr& msg) {
-		ROS_INFO("I heard color image");
+//		ROS_INFO("I heard color image");
 
 		cv_bridge::CvImagePtr cv_ptr;
 		try {
@@ -158,12 +212,12 @@ public:
 		}
 
 		Mat gray;
-		int count = 0;
-		double area = 0.0;
-		double area1 = 0.0;
-		double x = 0.0;
-		double y = 0.0;
-		double maxArea = 0.0;
+//		int count = 0;
+//		double area = 0.0;
+//		double area1 = 0.0;
+//		double x = 0.0;
+//		double y = 0.0;
+//		double maxArea = 0.0;
 
 		cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
 
@@ -173,10 +227,10 @@ public:
 		
 		//              ROS_INFO("imageCb semaphore in");
 
-		int circleIndex = -1;
+//		int circleIndex = -1;
 
 		int minDistIndex = -1;
-		int minDist = 10000;
+//		int minDist = 10000;
 
 
 		drawAllCrircles(circleList, gray);
@@ -190,10 +244,22 @@ public:
 		//	jeśli istnieje jakiś okrąg
 		if (minDistIndex != -1) {
 
-			publishAlgState(1);
+
+/*
+			++hysteresis;
+
+			ROS_INFO("          hysteresis = %d",hysteresis );
+			if(hysteresis < 1){
+				return;
+			}
+			hysteresis = 1;
+*/
+
+//			publishAlgState("GO_TO_BALL");
+//			stopExplore();
 
 			robotRun = 1;
-			ROS_INFO("minDistIndex=%d ", minDistIndex);
+//			ROS_INFO("minDistIndex=%d ", minDistIndex);
 
 			int circleX = circleList[minDistIndex].x;
 			int circleY = circleList[minDistIndex].y;
@@ -207,9 +273,8 @@ public:
 			vel.angular.z = (320.0 - (float) circleX) / 500.0;
 			vel.linear.x = (0.1 - (abs(320 - circleX)) / 3200.0) * (1 - pow(circleY / 460.0, 1));
 
+
 			//vel_pub_.publish(vel);
-
-
 			//ROS_INFO("circle area1 =%f (x,y)=(%d,%d) vel.linear.x = %f, vel.angular.z = %f",
 			//		maxArea, circleX, circleY, vel.linear.x, vel.angular.z);
 			
@@ -219,10 +284,23 @@ public:
 			}
 
 		} else {
-			publishAlgState(0);
+
+			/*
+			--hysteresis;
+
+			if(hysteresis > -1){
+				return;
+			}
+			hysteresis = -1;
+
+			startExplore();
 			offHoover();
+
+			*/
 		//	stopRobot();
 		}
+
+
 
 
 		semaphore.unlock();
@@ -269,7 +347,7 @@ public:
 
 
 	void depthImageCb(const sensor_msgs::ImageConstPtr& msg) {
-		ROS_INFO("I heard depth image");
+//		ROS_INFO("I heard depth image");
 
 		cv_bridge::CvImagePtr cv_ptr;
 		try {
@@ -284,6 +362,8 @@ public:
 
 		cv_ptr->image.convertTo(gray, CV_8UC1, 1. / 16);
 		cv_ptr->image.convertTo(orginal, CV_16UC1, 1);
+
+
 
 		cv_ptr->image.convertTo(gray, CV_8UC1, 1. / 16);
 
@@ -327,8 +407,6 @@ public:
 		//      findContours(countMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 		//      GaussianBlur(gray, gray, Size(9, 9), 2, 2);
 
-		//      val1 = 17.85
-		//      val2 = 7.65
 
 		Canny(gray, gray, val1, val2, 3);
 
@@ -344,10 +422,10 @@ public:
 		morphologyEx(countMap, countMap, MORPH_CLOSE, elem, anchor,
 				morphIterations);
 
-		//      InputArray src, OutputArray dst, int op, InputArray element, Point anchor=Point(-1,-1), int iterations=1,
-		//      int borderType=BORDER_CONSTANT, const Scalar& borderValue=morphologyDefaultBorderValue()
+//      InputArray src, OutputArray dst, int op, InputArray element, Point anchor=Point(-1,-1), int iterations=1,
+//      int borderType=BORDER_CONSTANT, const Scalar& borderValue=morphologyDefaultBorderValue()
 
-//              ROS_INFO("There are %d contours", contours.size());
+//      ROS_INFO("There are %d contours", contours.size());
 
 		Mat empty = gray.clone();
 		threshold(gray, empty, 255, 255, THRESH_BINARY);
@@ -359,10 +437,14 @@ public:
 		Semaphore semaphore("test_sem");
 		semaphore.lock();
 
+
+
 		circleList.clear();
 		for (unsigned int i = 0; i < contours.size(); i++) {
 			//       drawContours( gray, contours[i], color, color, -1, CV_FILLED, 8 );
-			int area = contourArea(contours[i]);
+
+
+//			int area = contourArea(contours[i]);
 
 			Point pt1 = Point(639, 479);
 			Point pt2 = Point(0, 0);
@@ -390,9 +472,9 @@ public:
 			// rectangle(empty, pt1, pt2, 255);
 			//       rectangle(gray, pt1, pt2, 255);
 
-			int xOffset = pt1.x;
-			int yOffset = pt2.y;
-			int width = pt2.x - pt1.x;
+//			int xOffset = pt1.x;
+//			int yOffset = pt2.y;
+//			int width = pt2.x - pt1.x;
 
 			//for(int _x = pt1.x; _x)
 
@@ -411,16 +493,19 @@ public:
 			int cols = currMat.cols;
 			int rows = currMat.rows;
 
-			int numberOfPixels = cols * rows;
+//			int numberOfPixels = cols * rows;
 			int x0 = cols / 2;
 			int y0 = rows / 2;
 			int r = cols / 2;
 
 			int numberOfWhitePointInCircle = 0;
 			int numberOfWhitePointOutCircle = 0;
+
+	//		ROS_INFO("aaa");
+	//		ROS_INFO("cols = %d, rows = %d", cols, rows);
 			for (int x = 0; x < cols; ++x) {
 				for (int y = 0; y < rows; ++y) {
-
+		//			ROS_INFO("(x, y) = (%d, %d)", x,y);
 					if (currMat.at < uint16_t > (y, x) == 255) {
 						//        białe
 
@@ -440,28 +525,87 @@ public:
 					}
 				}
 			}
-			int ob = 3 * r;
+	//		ROS_INFO("bbb");
+
+//			int ob = 3 * r;
+
+
 			if (numberOfWhitePointInCircle > numberOfWhitePointOutCircle) {
-//				ROS_INFO("                           CIRCLE (%d,%d)", xOffset + r, yOffset + r);
-				//               rectangle(gray, pt1, pt2, 255, CV_FILLED);
-				//      circle(out_image,  center, a/2, 255, CV_FILLED);
 
 				CIRCLE circle;
 				circle.r = r;
+				circle.x = pt1.x + circle.r;
+				circle.y = pt1.y + circle.r;
+
+		//		ROS_INFO("x = %d, y = %d", circle.x, circle.y);
 
 				if (circle.r < 10 || circle.r > 20) {
 					continue;
 				}
+	//			ROS_INFO("(x, y)  = (%d, %d)", )
+				circle.depth = orginal.at < uint16_t > (circle.y, circle.x);
 
-				circle.x = pt1.x + circle.r;
-				circle.y = pt1.y + circle.r;
+				if(circle.y < 2 || circle.y > 476 || circle.x < 2 || circle.x > 636){
+					continue;
+				}
+			//	ROS_INFO("ccc");
+
+				int depth = 0;
+				int number_of_elem = 0;
+				for(int k = 0; k < 5; k ++){
+					for(int m = 0; m < 5; m ++){
+						int curr_dep_ = orginal.at < uint16_t > (circle.y -2+m, circle.x-2+k);
+						if(curr_dep_ == 0){
+
+						}
+						else if(curr_dep_ > 2000){
+
+						}
+						else{
+							depth += curr_dep_;
+							++number_of_elem;
+						//	ROS_INFO(" curr depth = %d  ", curr_dep_);
+						}
+
+					}
+				}
+			//	ROS_INFO("ddd");
+
+			//	ROS_INFO("number_of_elem = %d", number_of_elem);
+
+				if(number_of_elem == 0){
+					continue;
+				}
+
+				depth /= number_of_elem;
+				circle.depth = depth;
+
+
+//				float lowR = -((float)circle.depth/87.0)+24.1;
+
+				float lowR = -((float)circle.depth/87.0)+22.1;
+				float hiR = -((float)circle.depth/87.0)+28.1;
+
+//				ROS_INFO(" r = %d,   depth = %d,  lowR = %f,  hiR = %f", circle.r, circle.depth, lowR, hiR );
+			//	int dep =  orginal.at < uint16_t > (351, 526);
+			//	ROS_INFO("dep = %d", dep);
+
+
+
+
+
+				if( (float)circle.r < lowR ||  (float)circle.r > hiR ){
+					continue;
+				}
+
 				circleList.push_back(circle);
+
 
 			}
 
-//			ROS_INFO("%d in circle= %d  out circle= %d all pixels = %d r=%d \n",
-//					i, numberOfWhitePointInCircle, numberOfWhitePointOutCircle,
-//					numberOfPixels, r);
+
+
+/*
 
 			drawContours(empty, contours, i, 255);
 
@@ -481,7 +625,11 @@ public:
 				}
 			}
 
+			*/
+
 		}
+
+		/*
 
 		threshold(out_image, trash, 75, 255, THRESH_BINARY);
 
@@ -512,10 +660,15 @@ public:
 			int a = (pt2.x - pt1.x);
 
 		}
-		ROS_INFO("circleList.size = %d", circleList.size());
+
+
+		*/
+
+	//	ROS_INFO("circleList.size = %d", circleList.size());
+		publishAllBalls();
 		
-//              ROS_INFO("imageDepthCb semaphore out");
-//		semaphore.unlock();
+//      ROS_INFO("imageDepthCb semaphore out");
+		semaphore.unlock();
 
 #ifdef _ON_PC_
 
@@ -571,10 +724,64 @@ public:
 
 	}
 
-	void publishAlgState(int state){
-		std_msgs::Int16 stateMsg;
+	void publishAlgState(string state){
+		std_msgs::String stateMsg;
 		stateMsg.data = state;
 		alghoritm_state_pub_.publish(stateMsg);
+	}
+	
+	void publishAllBalls(){
+		
+		geometry_msgs::PoseArray allBalls;
+		allBalls.header.stamp = ros::Time(0);	//	now
+		
+		allBalls.header.frame_id ="/map";
+
+	//	reprojectImageTo3D(InputArray disparity, OutputArray _3dImage, InputArray Q)
+		
+
+		std::vector<geometry_msgs::Pose> poses;
+
+		for (unsigned int i = 0; i < circleList.size(); ++i) {
+
+			geometry_msgs::Pose pose;
+			pose.position.x = circleList[i].x;
+			pose.position.y = circleList[i].y;
+			pose.position.z = circleList[i].depth;
+			poses.push_back(pose);
+		}
+		allBalls.poses = poses;
+		
+		balls_pub_.publish(allBalls);
+
+	}
+	
+	
+	void PTScallback(const sensor_msgs::PointCloud2ConstPtr& cloudMsg) {
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(
+				new pcl::PointCloud<pcl::PointXYZ>);
+//		ROS_INFO("enter PTScallback");
+
+		pcl::fromROSMsg(*cloudMsg, *cloud);
+//		ROS_INFO("size = %d", (int) cloud->points.size());
+
+		//	cloud.fields[]
+
+		for (unsigned int i = 0; i <  circleList.size(); ++i) {
+//			int pointId = getArrayId(circleList[i].y, circleList[i].x );
+//			int x = cloud->points[pointId].x;
+//			int y = cloud->points[pointId].y;
+//			int z = cloud->points[pointId].z;
+//			ROS_INFO("Ball %d,  (x,y,z) = (%d, %d, %d)",i, x, y, z);
+
+		}
+
+	}
+
+
+	int getArrayId(int row, int col){
+		return row*640 + col;
 	}
 
 };
@@ -654,6 +861,27 @@ int getDistance(CIRCLE circle){
 	return (int)dist;
 }
 	
+
+void ImageConverter::stopExplore(){
+	publishAlgState("GO_TO_BALL");
+	if(explore == false)
+		return;
+
+	ROS_INFO("stopExplore");
+
+	explore = false;
+	ac.cancelAllGoals ();
+}
+
+void ImageConverter::startExplore(){
+	publishAlgState("SEARCH_BALLS");
+	if(explore == true)
+		return;
+
+	ROS_INFO("startExplore");
+	explore = true;
+	ac.cancelAllGoals ();
+}
 
 
 

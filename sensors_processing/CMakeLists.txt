@@ -30,6 +30,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_add_executable(convert_node src/convert_node.cpp)
 rosbuild_add_executable(color_image_node src/color_image_node.cpp)
 rosbuild_add_executable(robot_move src/robot_move.cpp)
+rosbuild_add_executable(ptpcl src/point_to_pcl.cpp)
+rosbuild_add_executable(choose_accessible_balls src/choose_accessible_balls.cpp)
+rosbuild_add_executable(choose_one_ball src/choose_one_ball.cpp src/TracedBall.cpp)
+rosbuild_add_executable(go_to_selected_ball src/go_to_selected_ball.cpp src/TracedBall.cpp)
+
 
 #add dynamic reconfigure api
 rosbuild_find_ros_package(dynamic_reconfigure)

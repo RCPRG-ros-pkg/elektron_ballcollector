@@ -1,0 +1,16 @@
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/ROSBUILD_genmsg_cpp.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/ROSBUILD_genmsg_lisp.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/ROSBUILD_gensrv_cpp.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/ROSBUILD_gensrv_lisp.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/clean-test-results.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/move_robot_straight.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/rosbuild_precompile.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/rosbuild_premsgsrvgen.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/rospack_genmsg.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/rospack_genmsg_libexe.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/rospack_gensrv.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/test.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/test-future.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/test-results.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/test-results-run.dir
+/home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles/tests.dir
