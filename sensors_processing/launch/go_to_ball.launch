@@ -1,0 +1,6 @@
+<launch>	
+	<include file="$(find sensors_processing)/launch/choose_accesible_ball.launch" />
+	<include file="$(find sensors_processing)/launch/choose_one_ball.launch" />
+	<node pkg="sensors_processing" type="go_to_selected_ball" name="go_to_selected_ball" output="screen" />
+	<node pkg="ballcollector_move" type="move_robot_straight" name="move_robot_straight" output="screen" />
+</launch>

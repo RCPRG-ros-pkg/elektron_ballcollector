@@ -162,8 +162,8 @@ int main(int argc, char** argv) {
 				// jest piłeczka i nie jedzie prosto do piłeczki
 			ROS_INFO("Go to ball using NAV");
 
-			if(goToSelectedBall.getDistanceFromSelectedBall() > 0.7){
-				goToSelectedBall.offHoover();
+			if(goToSelectedBall.getDistanceFromSelectedBall() > 0.6){
+	//			goToSelectedBall.offHoover();
 
 				float angleDiffRobotGoal = goToSelectedBall.getAngleDiff()*180/(3.14);
 			//	ROS_INFO("angleDiffRobotGoal = %f", angleDiffRobotGoal);
@@ -184,11 +184,11 @@ int main(int argc, char** argv) {
 					goToSelectedBall.publishAngle();
 					goToSelectedBall.ac.waitForResult();
 				}
-				goToSelectedBall.goForward(0.5);
-				ros::Duration(4.0).sleep();
 				goToSelectedBall.onHoover();
-				goToSelectedBall.goForward(0.2);
-				ros::Duration(2.0).sleep();
+				goToSelectedBall.goForward(0.4);
+				ros::Duration(4.0).sleep();
+		//		goToSelectedBall.goForward(0.2);
+		//		ros::Duration(2.0).sleep();
 				//goToSelectedBall.publishPose(-0.1);
 				//goToSelectedBall.ac.waitForResult();
 			//	goToSelectedBall.offHoover();
