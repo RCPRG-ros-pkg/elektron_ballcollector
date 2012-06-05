@@ -96,7 +96,13 @@ void MoveRobotStraight::requestCb(const std_msgs::Float32& request ){
 
 	geometry_msgs::Twist vel;
 	vel.angular.z = 0;
-	vel.linear.x = 0.1;
+	if(distance_ > 0){
+		vel.linear.x = 0.1;
+	}
+	else{
+		vel.linear.x = -0.1;
+		distance_ = -distance_;
+	}
 	cmd_vel_publisher_.publish(vel);
 
 	first_request_recived = true;

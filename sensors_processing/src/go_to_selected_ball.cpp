@@ -47,7 +47,9 @@ enum State
     GO_FORWARD_INTRO = 1,
     GO_FORWARD_COLLECT = 2,
     GO_FORWARD_FINISH = 3,
-    LOOKING_FOR_BALLS = 4
+    LOOKING_FOR_BALLS = 4,
+    GO_TO_BALL = 5,
+    IDLE = 6
 };
 
 
@@ -66,6 +68,7 @@ private:
 
 	geometry_msgs::Point current_pose_;
 	ros::Publisher hoover_state_pub_;
+	ros::Publisher alghoritm_state_pub_;
 
 	ros::Publisher go_forward_robot_pub_;
 
@@ -90,13 +93,16 @@ public:
 		hoover_state_pub_ = nh_.advertise<std_msgs::Int16> ("hoover_state",1);
 		go_forward_robot_pub_ = nh_.advertise< std_msgs::Float32>("/robot_go_straight",1);
 		go_forward_robot_state_sub_ = nh_.subscribe("/robot_go_straight_state", 1, &GoToSelectedBall::robotGoStraightStateCb, this);
+		alghoritm_state_pub_ = nh_.advertise<std_msgs::String> ("/alghoritm_state",1);
+
+
 
 		firstGoalSent = false;
 		isBallPoseSet = false;
 		moveStraightState = 0;
 		moveStraightStateChange = false;
 
-		alg_state_ = LOOKING_FOR_BALLS;
+		alg_state_ = IDLE;
 
 	}
 	~GoToSelectedBall() {
@@ -124,6 +130,9 @@ public:
 
 	void goForward(float dist);
 	void sleepWithSpin(int hectoseconds);
+
+	void startExplore();
+	void stopExplore();
 };
 
 
@@ -146,7 +155,7 @@ int main(int argc, char** argv) {
 
 	ros::Rate loop_rate(10);
 
-
+	int no_ball_counter = 0;
 
 	while (ros::ok()) {
 		ros::spinOnce();
@@ -155,12 +164,33 @@ int main(int argc, char** argv) {
 
 		if(goToSelectedBall.isBallPoseSet == false){
 				//	brak piłeczki
-			ROS_INFO("wait for ball");
+			++no_ball_counter;
+
+			if(no_ball_counter > 20){
+				goToSelectedBall.startExplore();
+				goToSelectedBall.alg_state_ = LOOKING_FOR_BALLS;
+				ROS_INFO("state = LOOKING_FOR_BALLS, wait for ball no_ball_counter = %d", no_ball_counter);
+			}
+			else{
+				goToSelectedBall.ac.cancelAllGoals ();
+				goToSelectedBall.alg_state_ = IDLE;
+				ROS_INFO("state = IDLE, wait for ball no_ball_counter = %d", no_ball_counter);
+			}
+
 			continue;
 		}
 		else{
+
+			if(goToSelectedBall.alg_state_ == IDLE || goToSelectedBall.alg_state_ == LOOKING_FOR_BALLS){
+				goToSelectedBall.ac.cancelAllGoals ();
+			}
+			goToSelectedBall.stopExplore();
+
+			goToSelectedBall.alg_state_ = GO_TO_BALL;
+
+			no_ball_counter = 0;
 				// jest piłeczka i nie jedzie prosto do piłeczki
-			ROS_INFO("Go to ball using NAV");
+			ROS_INFO("state = GO_TO_BALL, Go to ball using NAV");
 
 			if(goToSelectedBall.getDistanceFromSelectedBall() > 0.6){
 	//			goToSelectedBall.offHoover();
@@ -186,6 +216,8 @@ int main(int argc, char** argv) {
 				}
 				goToSelectedBall.onHoover();
 				goToSelectedBall.goForward(0.4);
+				ros::Duration(4.0).sleep();
+				goToSelectedBall.goForward(-0.4);
 				ros::Duration(4.0).sleep();
 		//		goToSelectedBall.goForward(0.2);
 		//		ros::Duration(2.0).sleep();
@@ -638,6 +670,18 @@ void GoToSelectedBall::robotGoStraightStateCb(const std_msgs::Int16& state){
 	moveStraightState = state.data;
 }
 
+void GoToSelectedBall::startExplore(){
+
+	std_msgs::String state;
+	state.data = "SEARCH_BALLS";
+	alghoritm_state_pub_.publish(state);
+}
+void GoToSelectedBall::stopExplore(){
+
+	std_msgs::String state;
+	state.data = "GO_TO_BALL";
+	alghoritm_state_pub_.publish(state);
+}
 
 
 /*

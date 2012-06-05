@@ -61,9 +61,6 @@ void publishPose(geometry_msgs::Pose2D pose2d);
 bool canMove(float x, float y);
 double getCost(float x, float y);
 
-void transfromRobotToOdomPosition(double x_robot, double y_robot, double &x_odom, double &y_odom);
-
-void transfromRobotToMapPosition(double x_robot, double y_robot, double &x_map, double &y_map);
 
 
 
@@ -76,9 +73,12 @@ private:
 	ros::Subscriber alghoritm_state_sub_;
 	ros::Subscriber posSub;
 
+
 public:
 	bool firstGoalSend;
 	MoveBaseClient ac;
+	tf::TransformListener tf_listener_;
+
 	RobotMove():ac("move_base", true){
 		firstGoalSend = false;
 
@@ -95,6 +95,21 @@ public:
 	void stopExplore();
 	void alghoritmStateCallBack(const std_msgs::String& msg);
 	void poseCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
+	void transfromRobotToOdomPosition(float x_robot, float y_robot, float &x_odom, float &y_odom);
+	void transfromRobotToMapPosition(float x_robot, float y_robot, float &x_map, float &y_map);
+
+	void transFromOdomToMapPosition(float x_odom_pose, float y_odom_pose, float theta,
+			float &x_map_pose, float &y_map_pose, tf::Quaternion& q);
+
+	void getRobotPositionInOdom(float &x_odom_pose, float &y_odom_pose);
+
+	float getRobotAngleInMap();
+	float getRobotAngleInOdom();
+	float addPiToAngle(float angle);
+
+	void randomRotate();
+	void randomForward();
+	void robotFullRotate();
 };
 
 
@@ -113,8 +128,7 @@ int main(int argc, char** argv) {
 
 	ROS_INFO("1");
 
-	tf::TransformListener tf_listener;
-	costmap_ros = new costmap_2d::Costmap2DROS("local_costmap", tf_listener);
+	costmap_ros = new costmap_2d::Costmap2DROS("local_costmap", robotMove.tf_listener_);
 	//costmap_ros->getCostmapCopy(costmap);
 
 	double infRad = costmap_ros->getInflationRadius();
@@ -122,8 +136,8 @@ int main(int argc, char** argv) {
 
 	ros::Rate loop_rate(1);
 
-	float rand_theta;
-	double x_odom, y_odom, rand_x, rand_y, x_map, y_map;
+//	float rand_theta;
+//	double x_odom, y_odom, rand_x, rand_y, x_map, y_map;
 
 
 	 while (!robotMove.ac.waitForServer(ros::Duration(5.0))) {
@@ -145,6 +159,7 @@ int main(int argc, char** argv) {
 			continue;
 		}
 
+		/*
 		if(robotMove.firstGoalSend == true){
 			// ROS_INFO("state = %s", robotMove.ac.getState().toString());
 			// ROS_INFO(robotMove.ac.getState().toString());
@@ -154,31 +169,29 @@ int main(int argc, char** argv) {
 				continue;
 			}
 		}
+		*/
 
 		costmap_ros->getCostmapCopy(costmap);
 
-		do {
-			rand_theta = (((rand() % 360) - 180) * PI) / 180.0;
-			rand_x = (rand() % 10) / 20.0;
-			rand_y = (rand() % 10) / 20.0;
+		robotMove.robotFullRotate();
 
-			transfromRobotToOdomPosition(rand_x, rand_y, x_odom, y_odom);
+		robotMove.randomRotate();
 
+		if (robotMove.ac.getState()
+				== actionlib::SimpleClientGoalState::SUCCEEDED) {
+			ROS_INFO("Rotate  Hooray, the base moved");
+		} else {
+			ROS_INFO("Rotate  The base failed to move for some reason");
+		}
 
-		} while (!canMove(x_odom, y_odom));
+		robotMove.randomForward();
 
-		transfromRobotToMapPosition(rand_x, rand_y, x_map, y_map);
-		ROS_INFO("robot move to (%f,%f)", x_map, y_map);
-		robotMove.publishPose(x_map, y_map, rand_theta);
-
-//		robotMove.ac.waitForResult();
-
-		  if(robotMove.ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
-		    ROS_INFO("Hooray, the base moved");
-		  }
-		  else{
-		    ROS_INFO("The base failed to move for some reason");
-		  }
+		if (robotMove.ac.getState()
+				== actionlib::SimpleClientGoalState::SUCCEEDED) {
+			ROS_INFO("Forward  Hooray, the base moved");
+		} else {
+			ROS_INFO("Forward  The base failed to move for some reason");
+		}
 
 	}
 
@@ -333,6 +346,203 @@ void RobotMove::publishPose(float x, float y, float theta){
 
 }
 
+float RobotMove::addPiToAngle(float angle){
+	angle += PI;								//	kąt od 0 do 2PI
+	angle += PI;								//	kąt od 0 do 2PI przekręcony o PI
+
+	if(angle > 2*PI){
+		angle = angle - 2*PI;
+	}
+	angle -= PI;
+	return angle;
+}
+
+void RobotMove::robotFullRotate(){
+
+	ROS_INFO("enter robotFullRotate ");
+	float robot_odom_x, robot_odom_y;
+	getRobotPositionInOdom(robot_odom_x, robot_odom_y);
+
+
+	float angle_in_odom = getRobotAngleInOdom();		//	kat od -PI do + PI
+	float anglePlusPI = addPiToAngle(angle_in_odom);
+
+	tf::Quaternion q;
+	float goal_map_x, goal_map_y;
+	transFromOdomToMapPosition(robot_odom_x, robot_odom_y, anglePlusPI, goal_map_x, goal_map_y, q);
+
+	geometry_msgs::Quaternion qMsg;
+	tf::quaternionTFToMsg(q, qMsg);
+
+
+	move_base_msgs::MoveBaseGoal goal;
+
+	goal.target_pose.pose.position.x = goal_map_x;
+	goal.target_pose.pose.position.y = goal_map_y;
+	goal.target_pose.pose.position.z = 0;
+
+
+	goal.target_pose.pose.orientation = qMsg;
+
+	goal.target_pose.header.stamp = ros::Time::now();
+	goal.target_pose.header.frame_id ="/map";
+
+	ROS_INFO("Sending goal 1");
+	ac.sendGoal(goal);
+
+	ROS_INFO("wait for result");
+	ac.waitForResult();
+
+
+	getRobotPositionInOdom(robot_odom_x, robot_odom_y);
+
+
+	angle_in_odom = getRobotAngleInOdom();		//	kat od -PI do + PI
+	anglePlusPI = addPiToAngle(angle_in_odom);
+
+	transFromOdomToMapPosition(robot_odom_x, robot_odom_y, anglePlusPI, goal_map_x, goal_map_y, q);
+
+	tf::quaternionTFToMsg(q, qMsg);
+
+
+	goal.target_pose.pose.position.x = goal_map_x;
+	goal.target_pose.pose.position.y = goal_map_y;
+	goal.target_pose.pose.position.z = 0;
+
+
+	goal.target_pose.pose.orientation = qMsg;
+
+	goal.target_pose.header.stamp = ros::Time::now();
+	goal.target_pose.header.frame_id ="/map";
+
+	ROS_INFO("Sending goal 2");
+	ac.sendGoal(goal);
+
+	ROS_INFO("wait for result");
+	ac.waitForResult();
+
+
+
+	ROS_INFO("leave robotFullRotate");
+}
+
+void RobotMove::randomRotate(){
+
+	ROS_INFO("enter randomRotate ");
+	float robot_odom_x, robot_odom_y;
+	getRobotPositionInOdom(robot_odom_x, robot_odom_y);
+
+
+	float angle = (((rand() % 360) - 180) * PI) / 180.0;
+
+	tf::Quaternion q;
+	float goal_map_x, goal_map_y;
+	transFromOdomToMapPosition(robot_odom_x, robot_odom_y, angle, goal_map_x, goal_map_y, q);
+
+	geometry_msgs::Quaternion qMsg;
+	tf::quaternionTFToMsg(q, qMsg);
+
+
+	move_base_msgs::MoveBaseGoal goal;
+
+	goal.target_pose.pose.position.x = goal_map_x;
+	goal.target_pose.pose.position.y = goal_map_y;
+	goal.target_pose.pose.position.z = 0;
+
+
+	goal.target_pose.pose.orientation = qMsg;
+
+	goal.target_pose.header.stamp = ros::Time::now();
+	goal.target_pose.header.frame_id ="/map";
+
+	ROS_INFO("Sending goal");
+	ac.sendGoal(goal);
+
+	ROS_INFO("wait for result");
+	ac.waitForResult();
+	ROS_INFO("leave randomRotate");
+
+
+
+}
+
+
+
+void RobotMove::randomForward(){
+
+	ROS_INFO("enter randomForward ");
+
+	int counter = 0;
+
+	float rand_x, rand_y, x_odom, y_odom, x_map, y_map;
+	do {
+		rand_x = (rand() % 10) / 20.0;
+		rand_y = 0;
+		transfromRobotToOdomPosition(rand_x, rand_y, x_odom, y_odom);
+		++counter;
+		if(counter > 10){
+			ROS_INFO("leave randomForward, can not move forward");
+			return;
+		}
+
+	} while (!canMove(x_odom, y_odom));
+
+
+	float robotAngleInMap = getRobotAngleInMap();
+
+	transfromRobotToMapPosition(rand_x, rand_y, x_map, y_map);
+	ROS_INFO("robot move to (%f,%f)", x_map, y_map);
+
+	publishPose(x_map, y_map, robotAngleInMap);
+
+	ROS_INFO("wait for result");
+	ac.waitForResult();
+
+	ROS_INFO("leave randomForward");
+}
+
+
+void RobotMove::getRobotPositionInOdom(float &x_odom_pose, float &y_odom_pose){
+
+	ros::Time now = ros::Time(0);
+	tf::StampedTransform tfOR;								//	robot w odom
+	tf_listener_.waitForTransform("/odom", "/base_link", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/odom", "/base_link", now,  tfOR);
+
+	x_odom_pose = tfOR.getOrigin ()[0];				//	wspolrzedne robota w ukladzie odom
+	y_odom_pose = tfOR.getOrigin ()[1];				//	wspolrzedne robota w ukladzie odom
+
+}
+
+
+float RobotMove::getRobotAngleInMap(){
+
+	ros::Time now = ros::Time(0);
+	tf::StampedTransform tfOR;								//	robot w odom
+	tf_listener_.waitForTransform("/map", "/base_link", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/map", "/base_link", now,  tfOR);
+
+//	x_odom_pose = tfOR.getOrigin ()[0];				//	wspolrzedne robota w ukladzie odom
+//	y_odom_pose = tfOR.getOrigin ()[1];				//	wspolrzedne robota w ukladzie odom
+
+	return tf::getYaw(tfOR.getRotation());
+
+}
+
+
+float RobotMove::getRobotAngleInOdom(){
+
+	ros::Time now = ros::Time(0);
+	tf::StampedTransform tfOR;								//	robot w odom
+	tf_listener_.waitForTransform("/odom", "/base_link", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/odom", "/base_link", now,  tfOR);
+
+//	x_odom_pose = tfOR.getOrigin ()[0];				//	wspolrzedne robota w ukladzie odom
+//	y_odom_pose = tfOR.getOrigin ()[1];				//	wspolrzedne robota w ukladzie odom
+
+	return tf::getYaw(tfOR.getRotation());
+
+}
 
 
 bool canMove(float x, float y){
@@ -375,20 +585,19 @@ double getCost(float x, float y){
 }
 
 
-void transfromRobotToOdomPosition(double x_robot, double y_robot, double &x_odom, double &y_odom){
+void RobotMove::transfromRobotToOdomPosition(float x_robot, float y_robot, float &x_odom, float &y_odom){
 
 // 	ROS_INFO(" enter transfromRobotToOdomPosition  robot pose (%f, %f)", x_robot, y_robot);
 
-	tf::TransformListener tf_listener;
 
 	ros::Time now = ros::Time::now();
 
 //	ROS_INFO("1");
 	tf::StampedTransform tfRO;
 //	ROS_INFO("2");
-	tf_listener.waitForTransform("/base_link", "/odom", now, ros::Duration(1.0));
+	tf_listener_.waitForTransform("/base_link", "/odom", now, ros::Duration(1.0));
 //	ROS_INFO("3");
-	tf_listener.lookupTransform ("/base_link", "/odom",  now,  tfRO);
+	tf_listener_.lookupTransform ("/base_link", "/odom",  now,  tfRO);
 //	ROS_INFO("4");
 	tf::Transform tfOR = tfRO.inverse();
 //	ROS_INFO("5");
@@ -407,22 +616,19 @@ void transfromRobotToOdomPosition(double x_robot, double y_robot, double &x_odom
 //	 ROS_INFO("x_odom = %f,  y_odom = %f", x_odom, y_odom);
 }
 
-void transfromRobotToMapPosition(double x_robot, double y_robot, double &x_map, double &y_map){
-
-
-	tf::TransformListener tf_listener;
+void RobotMove::transfromRobotToMapPosition(float x_robot, float y_robot, float &x_map, float &y_map){
 
 	ros::Time now = ros::Time::now();
 
 	tf::StampedTransform tfRO;
-	tf_listener.waitForTransform("/base_link", "/odom", now, ros::Duration(1.0));
-	tf_listener.lookupTransform ("/base_link", "/odom", now,  tfRO);
+	tf_listener_.waitForTransform("/base_link", "/odom", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/base_link", "/odom", now,  tfRO);
 	tf::Transform tfOR = tfRO.inverse();
 
 
 	tf::StampedTransform tfOM;
-	tf_listener.waitForTransform("/odom", "/map", now, ros::Duration(1.0));
-	tf_listener.lookupTransform ("/odom", "/map", now,  tfOM);
+	tf_listener_.waitForTransform("/odom", "/map", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/odom", "/map", now,  tfOM);
 	tf::Transform tfMO = tfOM.inverse();
 
 
@@ -443,6 +649,32 @@ void transfromRobotToMapPosition(double x_robot, double y_robot, double &x_map, 
 	y_map = tfMD.getOrigin ()[1];				//	wspolrzedne docelowe w ukladzie mapy
 
 
+}
+
+
+void RobotMove::transFromOdomToMapPosition(float x_odom_pose, float y_odom_pose, float theta,
+		float &x_map_pose, float &y_map_pose, tf::Quaternion& q){
+
+	ros::Time now = ros::Time(0);
+	tf::StampedTransform tfMO;								//	odom w map
+	tf_listener_.waitForTransform("/map", "/odom", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/map", "/odom", now,  tfMO);
+
+
+	tf::Transform tfOD;
+
+	tf::Quaternion quat;
+	quat.setRPY(0, 0, theta);
+
+	tfOD.setOrigin(tf::Vector3(x_odom_pose, y_odom_pose, 0.0));			//	docelowe w odom
+	tfOD.setRotation( quat );
+
+	tf::Transform tfMD = tfMO * tfOD;							//	docelowe w map
+
+
+	x_map_pose = tfMD.getOrigin ()[0];				//	wspolrzedne docelowe w ukladzie map
+	y_map_pose = tfMD.getOrigin ()[1];				//	wspolrzedne docelowe w ukladzie map
+	q = tfMD.getRotation();
 }
 
 
