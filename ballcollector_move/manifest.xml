@@ -19,6 +19,9 @@
   <depend package="costmap_2d"/>
   <depend package="navfn"/>
   <depend package="pcl_ros"/>
+  <depend package="sensors_processing"/>
+  
+  <depend package="scheduler"/>
 
 </package>
 

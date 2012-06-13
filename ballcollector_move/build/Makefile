@@ -96,6 +96,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named ROSBUILD_genaction_msgs
+
+# Build rule for target.
+ROSBUILD_genaction_msgs: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 ROSBUILD_genaction_msgs
+.PHONY : ROSBUILD_genaction_msgs
+
+# fast build rule for target.
+ROSBUILD_genaction_msgs/fast:
+	$(MAKE) -f CMakeFiles/ROSBUILD_genaction_msgs.dir/build.make CMakeFiles/ROSBUILD_genaction_msgs.dir/build
+.PHONY : ROSBUILD_genaction_msgs/fast
+
+#=============================================================================
 # Target rules for targets named ROSBUILD_genmsg_cpp
 
 # Build rule for target.
@@ -161,6 +174,45 @@ clean-test-results/fast:
 .PHONY : clean-test-results/fast
 
 #=============================================================================
+# Target rules for targets named explore
+
+# Build rule for target.
+explore: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 explore
+.PHONY : explore
+
+# fast build rule for target.
+explore/fast:
+	$(MAKE) -f CMakeFiles/explore.dir/build.make CMakeFiles/explore.dir/build
+.PHONY : explore/fast
+
+#=============================================================================
+# Target rules for targets named get_out_of_deadlock
+
+# Build rule for target.
+get_out_of_deadlock: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 get_out_of_deadlock
+.PHONY : get_out_of_deadlock
+
+# fast build rule for target.
+get_out_of_deadlock/fast:
+	$(MAKE) -f CMakeFiles/get_out_of_deadlock.dir/build.make CMakeFiles/get_out_of_deadlock.dir/build
+.PHONY : get_out_of_deadlock/fast
+
+#=============================================================================
+# Target rules for targets named go_to_selected_ball
+
+# Build rule for target.
+go_to_selected_ball: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 go_to_selected_ball
+.PHONY : go_to_selected_ball
+
+# fast build rule for target.
+go_to_selected_ball/fast:
+	$(MAKE) -f CMakeFiles/go_to_selected_ball.dir/build.make CMakeFiles/go_to_selected_ball.dir/build
+.PHONY : go_to_selected_ball/fast
+
+#=============================================================================
 # Target rules for targets named move_robot_straight
 
 # Build rule for target.
@@ -211,6 +263,19 @@ rospack_genmsg: cmake_check_build_system
 rospack_genmsg/fast:
 	$(MAKE) -f CMakeFiles/rospack_genmsg.dir/build.make CMakeFiles/rospack_genmsg.dir/build
 .PHONY : rospack_genmsg/fast
+
+#=============================================================================
+# Target rules for targets named rospack_genmsg_all
+
+# Build rule for target.
+rospack_genmsg_all: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 rospack_genmsg_all
+.PHONY : rospack_genmsg_all
+
+# fast build rule for target.
+rospack_genmsg_all/fast:
+	$(MAKE) -f CMakeFiles/rospack_genmsg_all.dir/build.make CMakeFiles/rospack_genmsg_all.dir/build
+.PHONY : rospack_genmsg_all/fast
 
 #=============================================================================
 # Target rules for targets named rospack_genmsg_libexe
@@ -304,6 +369,51 @@ tests/fast:
 .PHONY : tests/fast
 
 # target to build an object file
+src/explore.o:
+	$(MAKE) -f CMakeFiles/explore.dir/build.make CMakeFiles/explore.dir/src/explore.o
+.PHONY : src/explore.o
+
+# target to preprocess a source file
+src/explore.i:
+	$(MAKE) -f CMakeFiles/explore.dir/build.make CMakeFiles/explore.dir/src/explore.i
+.PHONY : src/explore.i
+
+# target to generate assembly for a file
+src/explore.s:
+	$(MAKE) -f CMakeFiles/explore.dir/build.make CMakeFiles/explore.dir/src/explore.s
+.PHONY : src/explore.s
+
+# target to build an object file
+src/get_out_of_deadlock.o:
+	$(MAKE) -f CMakeFiles/get_out_of_deadlock.dir/build.make CMakeFiles/get_out_of_deadlock.dir/src/get_out_of_deadlock.o
+.PHONY : src/get_out_of_deadlock.o
+
+# target to preprocess a source file
+src/get_out_of_deadlock.i:
+	$(MAKE) -f CMakeFiles/get_out_of_deadlock.dir/build.make CMakeFiles/get_out_of_deadlock.dir/src/get_out_of_deadlock.i
+.PHONY : src/get_out_of_deadlock.i
+
+# target to generate assembly for a file
+src/get_out_of_deadlock.s:
+	$(MAKE) -f CMakeFiles/get_out_of_deadlock.dir/build.make CMakeFiles/get_out_of_deadlock.dir/src/get_out_of_deadlock.s
+.PHONY : src/get_out_of_deadlock.s
+
+# target to build an object file
+src/go_to_selected_ball.o:
+	$(MAKE) -f CMakeFiles/go_to_selected_ball.dir/build.make CMakeFiles/go_to_selected_ball.dir/src/go_to_selected_ball.o
+.PHONY : src/go_to_selected_ball.o
+
+# target to preprocess a source file
+src/go_to_selected_ball.i:
+	$(MAKE) -f CMakeFiles/go_to_selected_ball.dir/build.make CMakeFiles/go_to_selected_ball.dir/src/go_to_selected_ball.i
+.PHONY : src/go_to_selected_ball.i
+
+# target to generate assembly for a file
+src/go_to_selected_ball.s:
+	$(MAKE) -f CMakeFiles/go_to_selected_ball.dir/build.make CMakeFiles/go_to_selected_ball.dir/src/go_to_selected_ball.s
+.PHONY : src/go_to_selected_ball.s
+
+# target to build an object file
 src/move_robot_straight.o:
 	$(MAKE) -f CMakeFiles/move_robot_straight.dir/build.make CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o
 .PHONY : src/move_robot_straight.o
@@ -324,17 +434,22 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
+	@echo "... ROSBUILD_genaction_msgs"
 	@echo "... ROSBUILD_genmsg_cpp"
 	@echo "... ROSBUILD_genmsg_lisp"
 	@echo "... ROSBUILD_gensrv_cpp"
 	@echo "... ROSBUILD_gensrv_lisp"
 	@echo "... clean-test-results"
 	@echo "... edit_cache"
+	@echo "... explore"
+	@echo "... get_out_of_deadlock"
+	@echo "... go_to_selected_ball"
 	@echo "... move_robot_straight"
 	@echo "... rebuild_cache"
 	@echo "... rosbuild_precompile"
 	@echo "... rosbuild_premsgsrvgen"
 	@echo "... rospack_genmsg"
+	@echo "... rospack_genmsg_all"
 	@echo "... rospack_genmsg_libexe"
 	@echo "... rospack_gensrv"
 	@echo "... test"
@@ -342,6 +457,15 @@ help:
 	@echo "... test-results"
 	@echo "... test-results-run"
 	@echo "... tests"
+	@echo "... src/explore.o"
+	@echo "... src/explore.i"
+	@echo "... src/explore.s"
+	@echo "... src/get_out_of_deadlock.o"
+	@echo "... src/get_out_of_deadlock.i"
+	@echo "... src/get_out_of_deadlock.s"
+	@echo "... src/go_to_selected_ball.o"
+	@echo "... src/go_to_selected_ball.i"
+	@echo "... src/go_to_selected_ball.s"
 	@echo "... src/move_robot_straight.o"
 	@echo "... src/move_robot_straight.i"
 	@echo "... src/move_robot_straight.s"

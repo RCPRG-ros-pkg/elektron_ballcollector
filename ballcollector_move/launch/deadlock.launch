@@ -1,0 +1,6 @@
+<launch>
+	<node pkg="ballcollector_move" type="get_out_of_deadlock" name="get_out_of_deadlock" output="screen">
+		<rosparam file="$(find elektron_navigation)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />	
+		<rosparam file="$(find elektron_navigation)/config/local_costmap_params.yaml" command="load" />	
+	</node>
+</launch>

@@ -87,11 +87,11 @@ void MoveRobotStraight::odomCb(const nav_msgs::OdometryConstPtr& odometry){
 }
 
 void MoveRobotStraight::requestCb(const std_msgs::Float32& request ){
-	ROS_INFO("enter requestCb");
+//	ROS_INFO("enter requestCb");
 	start_position_ = last_position_;
 	distance_ = request.data;
 
-	ROS_INFO("enter distance_ = %f", distance_);
+//	ROS_INFO("enter distance_ = %f", distance_);
 
 
 	geometry_msgs::Twist vel;
@@ -126,14 +126,17 @@ void MoveRobotStraight::publishStateRunning(){
 	std_msgs::Int16 message;
 	message.data = 1;
 	state_publisher_.publish(message);
-	ROS_INFO("Running");
+//	ROS_INFO("Running");
 }
 
 void MoveRobotStraight::publishStateDone(){
 	std_msgs::Int16 message;
 	message.data = 2;
 	state_publisher_.publish(message);
-	ROS_INFO("Done");
+//	ROS_INFO("Done");
 }
+
+
+
 
 

@@ -1,0 +1,4 @@
+<launch>	
+	<node pkg="sensors_processing" type="go_to_selected_ball" name="go_to_selected_ball" output="screen" />
+	<node pkg="ballcollector_move" type="move_robot_straight" name="move_robot_straight" output="screen" />
+</launch>

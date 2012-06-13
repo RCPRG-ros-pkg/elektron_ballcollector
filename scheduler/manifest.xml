@@ -1,0 +1,20 @@
+<package>
+  <description brief="scheduler">
+
+     scheduler
+
+  </description>
+  <author>robot</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/scheduler</url>
+
+  <depend package="roscpp"/>
+  <depend package="actionlib"/>
+  <depend package="geometry_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="move_base_msgs"/>
+
+</package>
+
+

@@ -109,6 +109,20 @@ CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/navigation/costmap_2d/manifest.xml
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/navigation/nav_core/manifest.xml
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/navigation/navfn/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/vision_opencv/opencv2/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/vision_opencv/cv_bridge/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/image_common/image_transport/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_tools/ecl_license/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_tools/ecl_build/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_lite/ecl_config/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_lite/ecl_errors/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_core/ecl_exceptions/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_lite/ecl_time_lite/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_core/ecl_time/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ecl_core/ecl_ipc/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/vision_opencv/image_geometry/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /home/robot/ros/elektron_ballcollector/sensors_processing/manifest.xml
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /home/robot/ros/elektron_ballcollector/scheduler/manifest.xml
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ros_comm/messages/std_msgs/msg_gen/generated
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ros_comm/messages/rosgraph_msgs/msg_gen/generated
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/ros_comm/clients/cpp/roscpp/msg_gen/generated
@@ -132,6 +146,7 @@ CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/driver_common/dynamic_reconfigure/srv_gen/generated
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/navigation/costmap_2d/msg_gen/generated
 CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /opt/ros/electric/stacks/navigation/navfn/srv_gen/generated
+CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o: /home/robot/ros/elektron_ballcollector/scheduler/msg_gen/generated
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/robot/ros/elektron_ballcollector/ballcollector_move/build/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building CXX object CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o"
 	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -DBT_USE_DOUBLE_PRECISION -DBT_EULER_DEFAULT_ZYX -W -Wall -Wno-unused-parameter -fno-strict-aliasing -pthread -o CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o -c /home/robot/ros/elektron_ballcollector/ballcollector_move/src/move_robot_straight.cpp
@@ -162,6 +177,17 @@ move_robot_straight_OBJECTS = \
 move_robot_straight_EXTERNAL_OBJECTS =
 
 ../bin/move_robot_straight: CMakeFiles/move_robot_straight.dir/src/move_robot_straight.o
+../bin/move_robot_straight: /usr/lib/libopencv_contrib.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_legacy.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_objdetect.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_calib3d.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_features2d.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_video.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_highgui.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_ml.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_imgproc.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_flann.so.2.3.1
+../bin/move_robot_straight: /usr/lib/libopencv_core.so.2.3.1
 ../bin/move_robot_straight: CMakeFiles/move_robot_straight.dir/build.make
 ../bin/move_robot_straight: CMakeFiles/move_robot_straight.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking CXX executable ../bin/move_robot_straight"
