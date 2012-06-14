@@ -100,10 +100,14 @@ public:
 
 
 	Explore(std::string name):
-		as_(nh_, name, boost::bind(&Explore::executeCB, this, _1), false),
+		as_(nh_, name, false),
 		action_name_(name),
 		ac_("move_base", true)
 	{
+
+		as_.registerGoalCallback(boost::bind(&Explore::goalCB, this));
+		as_.registerPreemptCallback(boost::bind(&Explore::preemptCB, this));
+
 		as_.start();
 		firstGoalSend = false;
 
@@ -140,11 +144,15 @@ public:
 	void maxForward();
 
 	void executeCB(const scheduler::SchedulerGoalConstPtr &goal);
-	bool canExplore(){ return explore_;};
 	void setCanExplore(bool explore){explore_ = explore;};
 	ExploreState getExploreState(){ return explore_state_;};
 	void setExploreState(ExploreState explore_state){explore_state_ = explore_state;};
 	bool isCurrentGoalDone();
+	bool isActionServerActive(){return as_.isActive();};
+
+
+	void goalCB();
+	void preemptCB();
 };
 
 
@@ -180,31 +188,35 @@ int main(int argc, char** argv) {
 
 		ros::spinOnce();
 		loop_rate.sleep();
-
+/*
 		if(robot_explore.canExplore() == false){
 	//		ROS_INFO("Robot move - no explore - start ...");
 	//		robot_explore.stopExplore();
 	//		ros::Duration(1.0).sleep();
 	//		ROS_INFO("Robot move - no explore - stop");
 			continue;
+		}*/
+
+		if (!robot_explore.isActionServerActive()){
+		      continue;
 		}
 		else{
 
 			costmap_ros->getCostmapCopy(costmap);
 
 			if(robot_explore.getExploreState() == STOP){
-				if(robot_explore.canExplore()){
+			//	if(robot_explore.canExplore()){
 					robot_explore.setExploreState(FULL_ROTATE);
 					robot_explore.robotFullRotate();
-					ROS_INFO("Start Explore go to FULL_ROTATE state");
-				}
+					ROS_INFO("Start Explore STOP --> FULL_ROTATE");
+			//	}
 			}
 			else if(robot_explore.getExploreState() == FULL_ROTATE){
 
 				if(robot_explore.isCurrentGoalDone()){
 					robot_explore.setExploreState(RANDOM_ROTATE);
 					robot_explore.randomRotate();
-					ROS_INFO("go to RANDOM_ROTATE state");
+					ROS_INFO("go to FULL_ROTATE --> RANDOM_ROTATE");
 				}
 
 			}
@@ -213,7 +225,7 @@ int main(int argc, char** argv) {
 				if(robot_explore.isCurrentGoalDone()){
 					robot_explore.setExploreState(MAX_FORWARD);
 					robot_explore.maxForward();
-					ROS_INFO("go to MAX_FORWARD state");
+					ROS_INFO("go to   RANDOM_ROTATE -->  MAX_FORWARD");
 				}
 			}
 			else if(robot_explore.getExploreState() == MAX_FORWARD){
@@ -221,7 +233,7 @@ int main(int argc, char** argv) {
 				if(robot_explore.isCurrentGoalDone()){
 					robot_explore.setExploreState(RANDOM_ROTATE);
 					robot_explore.randomRotate();
-					ROS_INFO("go to RANDOM_ROTATE state");
+					ROS_INFO("go to   MAX_FORWARD --> RANDOM_ROTATE");
 				}
 			}
 		}
@@ -828,6 +840,23 @@ void Explore::executeCB(const scheduler::SchedulerGoalConstPtr &goal){
 
 }
 
+
+void Explore::goalCB(){
+//	explore_ = true;
+    // accept the new goal
+    //goal_ =
+	explore_state_ = FULL_ROTATE;
+	as_.acceptNewGoal();
+  }
+
+void Explore::preemptCB(){
+	ROS_INFO("%s: Preempted", action_name_.c_str());
+
+//	explore_ = false;
+	explore_state_ = STOP;
+	ac_.cancelAllGoals ();
+	as_.setPreempted();
+}
 
 
 

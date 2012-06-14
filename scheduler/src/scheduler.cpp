@@ -9,6 +9,10 @@
 
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
+#include <tf/transform_datatypes.h>
+#include <costmap_2d/costmap_2d_ros.h>
+#include <costmap_2d/costmap_2d.h>
+
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -17,6 +21,8 @@ typedef enum
     EXPLORE = 0,
     GO_TO_BALL = 1,
     DEADLOCK = 2,
+    GO_TO_BALL_FIRST_STEP = 3,
+    GO_TO_BALL_SECOND_STEP = 4
 }State;
 
 
@@ -29,14 +35,15 @@ private:
 
 	actionlib::SimpleActionClient<scheduler::SchedulerAction> deadlock_action_client_;
 	actionlib::SimpleActionClient<scheduler::SchedulerAction> explore_action_client_;
+	actionlib::SimpleActionClient<scheduler::SchedulerAction> go_to_ball_action_client_;
 	MoveBaseClient ac_;
 
 	bool deadlock_;
 	bool ball_visible_;
 
 	State state_;
-
-
+	tf::TransformListener tf_listener_;
+	geometry_msgs::Point current_pose_;
 
 
 public:
@@ -62,10 +69,19 @@ public:
 	void setSate(State state);
 
 
+	float getDistanceFromSelectedBall();
+	void getRobotPositionInOdom(float &x_odom_pose, float &y_odom_pose);
+
+
+	void sendGoToBallStopGoal();
+	void sendGoToBallFirstStepGoal();
+	void sendGoToBallSecondStepGoal();
+
 
 	Scheduler():
 		deadlock_action_client_("get_out_of_deadlock", true),
 		explore_action_client_("explore", true),
+		go_to_ball_action_client_("go_to_selected_ball", true),
 		ac_("move_base", true)
 		{
 
@@ -80,6 +96,8 @@ public:
 		deadlock_action_client_.waitForServer();
 		ROS_INFO("Waiting for explore action server to start.");
 		explore_action_client_.waitForServer();
+		ROS_INFO("Waiting for go to ball action server to start.");
+		go_to_ball_action_client_.waitForServer();
 		ROS_INFO("All action servers are ready");
 	}
 
@@ -99,7 +117,7 @@ int main(int argc, char** argv) {
 			ros::spinOnce();
 			loop_rate.sleep();
 
-		//	std::cout<<"deadlock: "<<scheduler.isDeadlock()<<"  ball visible: "<<scheduler.isBallVisible()<<std::endl;
+//			std::cout<<"deadlock: "<<scheduler.isDeadlock()<<"  ball visible: "<<scheduler.isBallVisible()<<"state: "<<scheduler.getState()<<std::endl;
 
 
 			//	eksploracja moze byc przerwana w dowolnym momencie tylko
@@ -111,7 +129,6 @@ int main(int argc, char** argv) {
 					//	robot podczas eksploracji zakleszczyl sie
 					//	przechodzimy do stanu obslugi zakleszczenia
 
-					scheduler.cancelAllGoals();
 					scheduler.sendStopExploreGoal();
 					scheduler.sendDeadlockGoal();
 					scheduler.setSate(DEADLOCK);
@@ -122,14 +139,87 @@ int main(int argc, char** argv) {
 				else if(scheduler.isBallVisible()){
 					//	robot podczas eksploracji zobaczyl pileczke, przechodzimy do stanu
 					//	dojazdu do pileczki
-					scheduler.cancelAllGoals();
-					scheduler.sendGoToBallGoal();
-					scheduler.setSate(GO_TO_BALL);
-					ROS_INFO("EXPLORE ---> GO_TO_BALL");
+
+					//scheduler.cancelAllGoals();
+
+
+					if(scheduler.getDistanceFromSelectedBall() > 0.6){
+						//	pileczka jest dalej niz 0.6 m, przechodzimy do statnu GO_TO_BALL_FIRST_STEP
+
+						scheduler.sendStopExploreGoal();
+						scheduler.setSate(GO_TO_BALL_FIRST_STEP);
+						scheduler.sendGoToBallFirstStepGoal();
+
+						ROS_INFO("EXPLORE ---> GO_TO_BALL_FIRST_STEP");
+					}
+					else{
+						scheduler.sendStopExploreGoal();
+						scheduler.setSate(GO_TO_BALL_SECOND_STEP);
+						scheduler.sendGoToBallSecondStepGoal();
+
+						ROS_INFO("EXPLORE ---> GO_TO_BALL_SECOND_STEP");
+					}
+
+		//			scheduler.sendGoToBallGoal();
+		//			scheduler.setSate(GO_TO_BALL);
+		//			ROS_INFO("EXPLORE ---> GO_TO_BALL");
 				}
 
 			}
+			else if(scheduler.getState() == GO_TO_BALL_FIRST_STEP){
 
+				if (scheduler.isDeadlock()) {
+					//	dojezdzal do pileczki, ale sie zakleszczyl
+
+					scheduler.sendGoToBallStopGoal();
+					scheduler.sendDeadlockGoal();
+					scheduler.setSate(DEADLOCK);
+
+					ROS_INFO("GO_TO_BALL_FIRST_STEP ---> DEADLOCK");
+				}
+				else if(!scheduler.isBallVisible()){
+					//	dojezdzal do pileczki, ale przestal ja widziec
+
+					scheduler.sendGoToBallStopGoal();
+					scheduler.sendStartExploreGoal();
+					scheduler.setSate(EXPLORE);
+
+					ROS_INFO("GO_TO_BALL_FIRST_STEP ---> EXPLORE");
+				}
+				else if(scheduler.getDistanceFromSelectedBall() > 0.6){
+					scheduler.sendGoToBallStopGoal();
+					scheduler.sendGoToBallSecondStepGoal();
+					scheduler.setSate(GO_TO_BALL_SECOND_STEP);
+					ROS_INFO("GO_TO_BALL_FIRST_STEP ---> GO_TO_BALL_SECOND_STEP");
+				}
+			}
+			else if(scheduler.getState() == GO_TO_BALL_SECOND_STEP){
+
+				if(scheduler.isGoToBallServiceDone()){
+					scheduler.sendStopExploreGoal();
+					scheduler.setSate(EXPLORE);
+					ROS_INFO("GO_TO_BALL_SECOND_STEP ---> EXPLORE");
+				}
+				else{
+					continue;
+				}
+			}
+
+			// 	ze stanu obslugi zakleszczenia wychodzmy tylko po zakonczeniu
+			//	obslugi zakleszczenia. Przechodzimy wowczas do eksploracji
+			else if(scheduler.getState() == DEADLOCK){
+			//	ROS_INFO("state = DEADLOCK");
+				if(scheduler.isDeadlockServiceDone()){
+					//	zakonczono obsluge deadlocka
+					//	zaczynamy exploracje
+					scheduler.sendStartExploreGoal();
+					scheduler.setSate(EXPLORE);
+					ROS_INFO("DEADLOCK ---> EXPLORE");
+				}
+			}
+
+
+			/*
 			else if(scheduler.getState() == GO_TO_BALL){
 			//	ROS_INFO("state = GO_TO_BALL");
 				if (scheduler.isDeadlock()) {
@@ -149,20 +239,11 @@ int main(int argc, char** argv) {
 					ROS_INFO("GO_TO_BALL ---> EXPLORE");
 					continue;
 				}
+			}
 
-			}
-			// 	ze stanu obslugi zakleszczenia wychodzmy tylko po zakonczeniu
-			//	obslugi zakleszczenia. Przechodzimy wowczas do eksploracji
-			else if(scheduler.getState() == DEADLOCK){
-			//	ROS_INFO("state = DEADLOCK");
-				if(scheduler.isDeadlockServiceDone()){
-					//	zakonczono obsluge deadlocka
-					//	zaczynamy exploracje
-					scheduler.sendStartExploreGoal();
-					scheduler.setSate(EXPLORE);
-					ROS_INFO("DEADLOCK ---> EXPLORE");
-				}
-			}
+			*/
+
+
 	}
 
 
@@ -177,6 +258,8 @@ void Scheduler::selectedBallCb(const geometry_msgs::PointConstPtr& selectedBallP
 			ball_visible_ = false;
 			return;
 		}
+		current_pose_.x = selectedBallPose->x;
+		current_pose_.y = selectedBallPose->y;
 		ball_visible_ = true;
 
 }
@@ -220,24 +303,41 @@ void Scheduler::sendStartExploreGoal(){
 void Scheduler::sendStopExploreGoal(){
 	// send a goal to the action
 //	ROS_INFO("send a goal to the explore action server");
+//	scheduler::SchedulerGoal goal;
+//	goal.value = 0;
+
+	explore_action_client_.cancelAllGoals();
+}
+
+
+void Scheduler::sendGoToBallStopGoal(){
 	scheduler::SchedulerGoal goal;
 	goal.value = 0;
-	explore_action_client_.sendGoal(goal);
+	go_to_ball_action_client_.sendGoal(goal);
 }
 
-
-void Scheduler::sendGoToBallGoal(){
-
+void Scheduler::sendGoToBallFirstStepGoal(){
+	scheduler::SchedulerGoal goal;
+	goal.value = 1;
+	go_to_ball_action_client_.sendGoal(goal);
 }
+
+void Scheduler::sendGoToBallSecondStepGoal(){
+	scheduler::SchedulerGoal goal;
+	goal.value = 2;
+	go_to_ball_action_client_.sendGoal(goal);
+}
+
+bool Scheduler::isGoToBallServiceDone(){
+	bool is_done = go_to_ball_action_client_.getState().isDone();
+	return is_done;
+}
+
 
 bool Scheduler::isDeadlockServiceDone(){
 
 	bool is_done = deadlock_action_client_.getState().isDone();
 	return is_done;
-}
-
-bool Scheduler::isGoToBallServiceDone(){
-	return true;
 }
 
 
@@ -252,4 +352,46 @@ void Scheduler::setSate(State state){
 void Scheduler::cancelAllGoals(){
 	ac_.cancelAllGoals ();
 }
+
+
+
+
+
+
+
+
+
+float Scheduler::getDistanceFromSelectedBall(){
+
+	float robot_odom_x, robot_odom_y, ball_odom_x, ball_odom_y;
+	getRobotPositionInOdom(robot_odom_x, robot_odom_y);
+
+	ball_odom_x = current_pose_.x;
+	ball_odom_y = current_pose_.y;
+//	ROS_INFO("robot (x, y) i odom = (%f, %f)", robot_odom_x, robot_odom_y);
+//	ROS_INFO("ball (x, y) i odom = (%f, %f)", ball_odom_x, ball_odom_y);
+
+
+	float dist = sqrt(pow(ball_odom_x - robot_odom_x, 2) + pow(ball_odom_y-robot_odom_y, 2) );
+
+	return dist;
+}
+
+
+void Scheduler::getRobotPositionInOdom(float &x_odom_pose, float &y_odom_pose){
+
+	ros::Time now = ros::Time(0);
+	tf::StampedTransform tfOR;								//	robot w odom
+	tf_listener_.waitForTransform("/odom", "/base_link", now, ros::Duration(1.0));
+	tf_listener_.lookupTransform ("/odom", "/base_link", now,  tfOR);
+
+	x_odom_pose = tfOR.getOrigin ()[0];				//	wspolrzedne robota w ukladzie odom
+	y_odom_pose = tfOR.getOrigin ()[1];				//	wspolrzedne robota w ukladzie odom
+
+}
+
+
+
+
+
 

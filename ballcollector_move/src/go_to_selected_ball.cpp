@@ -54,8 +54,11 @@ typedef enum
     LOOKING_FOR_BALLS = 4,
     GO_TO_BALL = 5,
     IDLE = 6,
+
+
     STOP =7,
-    GO = 8
+    FIRST_STEP_COLLECT = 8,
+    SECOND_STEP_COLLECT = 9,
 }State;
 
 
@@ -100,8 +103,11 @@ public:
 	void robotGoStraightStateCb(const std_msgs::Int16& state);
 	void deadlockServiceStateCb(const std_msgs::String& state);
 
+	scheduler::SchedulerFeedback feedback_;
+	scheduler::SchedulerResult result_;
+
 	GoToSelectedBall(std::string name) :
-		as_(nh_, name, boost::bind(&Explore::executeCB, this, _1), false),
+		as_(nh_, name, boost::bind(&GoToSelectedBall::executeCB, this, _1), false),
 		action_name_(name),
 		ac("move_base", true)
 	{
@@ -119,7 +125,8 @@ public:
 		moveStraightStateChange = false;
 		is_deadlock_service_run = false;
 
-		alg_state_ = STOP;
+		as_.start();
+		state_ = STOP;
 
 	}
 	~GoToSelectedBall() {
@@ -162,7 +169,7 @@ public:
 
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "goToSelectedBall");
-	GoToSelectedBall goToSelectedBall;
+	GoToSelectedBall goToSelectedBall(ros::this_node::getName());
 
 	 while(!goToSelectedBall.ac.waitForServer(ros::Duration(5.0))){
 	    ROS_INFO("Waiting for the move_base action server to come up");
@@ -179,11 +186,37 @@ int main(int argc, char** argv) {
 		ros::spinOnce();
 		loop_rate.sleep();
 
+
 		if( goToSelectedBall.getState() == STOP ){
-
+			ROS_INFO("STOP state");
+			continue;
 		}
-		else if(goToSelectedBall.getState() == GO){
+		else if(goToSelectedBall.getState() == FIRST_STEP_COLLECT){
+			//	scheduler zezwolil na jazde, ale node nie ma wspolrzednych pileczki
+			if(goToSelectedBall.isBallPoseSet == false){
+				ROS_INFO("FIRST_STEP_COLLECT - no ball visible");
+				continue;
+			}
+			else{
+			//	jest pileczka, sprwdzamy odleglosc
+				if(goToSelectedBall.getDistanceFromSelectedBall() > 0.6){
 
+					ROS_INFO("FIRST_STEP_COLLECT - go to ball");
+					float angleDiffRobotGoal = goToSelectedBall.getAngleDiff()*180/(3.14);
+					if(angleDiffRobotGoal > 2.5){
+						goToSelectedBall.publishAngle();
+						goToSelectedBall.ac.waitForResult();
+						goToSelectedBall.goForward(0.1);
+					}
+					else{
+					//	goToSelectedBall.publishPose(0.2);
+						goToSelectedBall.goForward(0.1);
+					}
+				}
+				else{
+					ROS_INFO("FIRST_STEP_COLLECT - ball too close");
+				}
+			}
 		}
 
 
@@ -584,9 +617,31 @@ void GoToSelectedBall::stopExplore(){
 void GoToSelectedBall::executeCB(const scheduler::SchedulerGoalConstPtr &goal){
 	ROS_INFO("enter executeCB, goal = %i", goal->value);
 
-	//	go to ball
+	if(goal->value == 0){
+		state_ = STOP;
+	}
+	else if(goal->value == 1){
+		state_ = FIRST_STEP_COLLECT;
+	}
+	else if(goal->value == 2){
+		// TODO: sprawdza, czy jest ustawiona pozycja pileczki, albo przesylac ja razem z goalem
+		state_ = SECOND_STEP_COLLECT;
 
-	feedback_.value = 0;
+		ROS_INFO("enter SECOND_STEP_COLLECT");
+		float angleDiffRobotGoal = getAngleDiff()*180/(3.14);
+		if(angleDiffRobotGoal > 2.5){
+			publishAngle();
+			ac.waitForResult();
+		}
+		float dist = getDistanceFromSelectedBall();
+		onHoover();
+		goForward(dist - 0.3);
+		ros::Duration(4.0).sleep();
+		goForward(-(dist - 0.3));
+		ros::Duration(4.0).sleep();
+		ROS_INFO("leave SECOND_STEP_COLLECT");
+	}
+
 
 	as_.publishFeedback(feedback_);
 	result_.value = feedback_.value;
@@ -639,10 +694,6 @@ void GoToSelectedBall::executeCB(const scheduler::SchedulerGoalConstPtr &goal){
 			}
 
 			*/
-
-
-
-
 
 
 
