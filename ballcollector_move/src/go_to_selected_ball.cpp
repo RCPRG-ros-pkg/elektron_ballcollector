@@ -625,6 +625,7 @@ void GoToSelectedBall::executeCB(const scheduler::SchedulerGoalConstPtr &goal){
 	}
 	else if(goal->value == 2){
 		// TODO: sprawdza, czy jest ustawiona pozycja pileczki, albo przesylac ja razem z goalem
+		// TODO: dopisac serwer do jazdy do przodu a nie na sleep tak jak teraz
 		state_ = SECOND_STEP_COLLECT;
 
 		ROS_INFO("enter SECOND_STEP_COLLECT");
@@ -639,6 +640,7 @@ void GoToSelectedBall::executeCB(const scheduler::SchedulerGoalConstPtr &goal){
 		ros::Duration(4.0).sleep();
 		goForward(-(dist - 0.3));
 		ros::Duration(4.0).sleep();
+		offHoover();
 		ROS_INFO("leave SECOND_STEP_COLLECT");
 	}
 

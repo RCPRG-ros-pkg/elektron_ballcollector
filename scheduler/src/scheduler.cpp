@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
 
 					ROS_INFO("GO_TO_BALL_FIRST_STEP ---> EXPLORE");
 				}
-				else if(scheduler.getDistanceFromSelectedBall() > 0.6){
+				else if(scheduler.getDistanceFromSelectedBall() < 0.6){
 					scheduler.sendGoToBallStopGoal();
 					scheduler.sendGoToBallSecondStepGoal();
 					scheduler.setSate(GO_TO_BALL_SECOND_STEP);
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
 			else if(scheduler.getState() == GO_TO_BALL_SECOND_STEP){
 
 				if(scheduler.isGoToBallServiceDone()){
-					scheduler.sendStopExploreGoal();
+					scheduler.sendStartExploreGoal();
 					scheduler.setSate(EXPLORE);
 					ROS_INFO("GO_TO_BALL_SECOND_STEP ---> EXPLORE");
 				}
